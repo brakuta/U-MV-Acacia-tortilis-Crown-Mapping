@@ -10,4 +10,31 @@ it through::
 from .version import __version__  # noqa: F401
 from . import datasets, models  # noqa: F401  (registration side effects)
 
+
+def _register_checkpoint_loader():
+    """Make mmengine's local checkpoint loader work under PyTorch >= 2.6.
+
+    torch.load defaults to ``weights_only=True`` since 2.6; mmengine 0.10.x calls it
+    without the argument, and its checkpoints contain ``message_hub`` objects that the
+    restricted unpickler rejects (``Unsupported global: ... HistoryBuffer``).  The
+    checkpoints handled here are the project's own files, so the full unpickler is used.
+    """
+    import os.path as osp
+
+    import torch
+    from mmengine.runner.checkpoint import CheckpointLoader
+
+    @CheckpointLoader.register_scheme(prefixes='', force=True)
+    def _load_from_local(filename, map_location):
+        filename = osp.expanduser(filename)
+        if not osp.isfile(filename):
+            raise FileNotFoundError(f'{filename} can not be found.')
+        try:
+            return torch.load(filename, map_location=map_location, weights_only=False)
+        except TypeError:  # torch < 1.13 has no weights_only argument
+            return torch.load(filename, map_location=map_location)
+
+
+_register_checkpoint_loader()
+
 __all__ = ['__version__', 'models', 'datasets']

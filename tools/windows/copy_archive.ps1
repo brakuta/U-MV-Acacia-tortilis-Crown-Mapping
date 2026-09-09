@@ -20,10 +20,12 @@ $data = "Data used to build the model"
 $wts = "A.tortilis Models\Pretrained weights"
 
 if ($Destination -match '&') { throw "The destination path must not contain '&' (Docker cannot mount it)." }
-if (-not (Test-Path -LiteralPath "$Source\$data")) { throw "Source not found: $Source\$data  (is the Z: drive connected?)" }
+if (-not (Test-Path -LiteralPath "$Source\$data")) {
+    throw "Source not found: $Source\$data`n  Is the Z: drive visible in File Explorer? Is this PowerShell window running as administrator? (an administrator window cannot see network drives: close it and open a normal one)"
+}
 
 Write-Host "1/2  Copying the dataset (about 32 GB; 10 to 60 minutes depending on the network) ..."
-robocopy "$Source\$data" "$Destination\$data" /E /MT:16 /R:2 /W:5 /XF *.aux.xml *.ovr *.xml /NP /NFL /NDL
+robocopy "$Source\$data" "$Destination\$data" /E /MT:16 /R:2 /W:5 /XF *.aux.xml *.ovr /NP /NFL /NDL
 if ($LASTEXITCODE -ge 8) { throw "robocopy reported failures (exit code $LASTEXITCODE); run the script again." }
 
 Write-Host "2/2  Copying the trained models (about 2.5 GB) ..."
@@ -35,15 +37,15 @@ Write-Host "Tile counts   (expected: train 4893, val 2407, test2 3123, Generaliz
 $ok = $true
 $expected = @{ train = 4893; val = 2407; test2 = 3123; Generalizability = 2162 }
 foreach ($s in 'train', 'val', 'test2', 'Generalizability') {
-    $img = (Get-ChildItem -LiteralPath "$Destination\$data\img_dir\$s" -Filter *.tif -File).Count
-    $ann = (Get-ChildItem -LiteralPath "$Destination\$data\ann_dir\$s" -Filter *.tif -File).Count
+    $img = @(Get-ChildItem -LiteralPath "$Destination\$data\img_dir\$s" -Filter *.tif -File -ErrorAction SilentlyContinue).Count
+    $ann = @(Get-ChildItem -LiteralPath "$Destination\$data\ann_dir\$s" -Filter *.tif -File -ErrorAction SilentlyContinue).Count
     $flag = if ($img -eq $expected[$s] -and $ann -eq $expected[$s]) { 'ok' } else { $ok = $false; 'CHECK' }
     "{0,-18} images={1,5}  masks={2,5}   {3}" -f $s, $img, $ann, $flag
 }
 
 Write-Host ""
 Write-Host "Best checkpoints found:"
-Get-ChildItem -LiteralPath "$Destination\$wts" -Recurse -Filter best_mIoU_iter_*.pth | ForEach-Object { "  " + $_.FullName }
+Get-ChildItem -LiteralPath "$Destination\$wts" -Recurse -Filter best_mIoU_iter_*.pth -ErrorAction SilentlyContinue | ForEach-Object { "  " + $_.FullName }
 
 $d = $Destination.TrimEnd('\') -replace '\\', '/'
 Write-Host ""

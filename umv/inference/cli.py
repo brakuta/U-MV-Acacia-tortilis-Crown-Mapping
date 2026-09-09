@@ -19,7 +19,8 @@ def add_common_arguments(p: argparse.ArgumentParser) -> argparse.ArgumentParser:
     g.add_argument('--tile-size', type=int, default=1024)
     g.add_argument('--overlap', type=int, default=256, help='>=128 recommended')
     g.add_argument('--blend', choices=['center', 'hann'], default='center')
-    g.add_argument('--batch-size', type=int, default=8)
+    g.add_argument('--batch-size', type=int, default=4,
+                   help='tiles per forward pass (4 fits a 12 GB GPU; 8-16 on 24 GB)')
     g.add_argument('--num-workers', type=int, default=4)
     g.add_argument('--prefetch-factor', type=int, default=2)
     g.add_argument('--mp-context', choices=['fork', 'spawn', 'forkserver'], default=None)
@@ -31,7 +32,9 @@ def add_common_arguments(p: argparse.ArgumentParser) -> argparse.ArgumentParser:
     v = p.add_argument_group('vectorisation')
     v.add_argument('--class-id', type=int, default=1, help='index of the acacia class')
     v.add_argument('--thresh', type=float, default=0.35, help='probability threshold')
-    v.add_argument('--min-area', type=float, default=0.0, help='minimum polygon area in CRS units')
+    v.add_argument('--min-area', type=float, default=0.0,
+                   help='minimum polygon area in square metres (CRS units; geographic CRS is '
+                        'converted to the local UTM zone for the area computation)')
     v.add_argument('--connectivity', type=int, choices=[4, 8], default=4)
     v.add_argument('--no-mean-prob', action='store_true', help='skip per-polygon mean probability')
     v.add_argument('--format', choices=['gpkg', 'shp'], default='gpkg')

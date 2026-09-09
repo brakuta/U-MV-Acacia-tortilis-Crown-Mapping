@@ -112,6 +112,15 @@ def main():
 
     cfg.load_from = resolve_checkpoint(args.checkpoint)  # a work dir resolves to best_mIoU_iter_*.pth
     print(f'-> checkpoint: {cfg.load_from}')
+    bb = cfg.model.get('backbone')
+    if isinstance(bb, dict) and 'pretrained' in bb:
+        bb['pretrained'] = False  # every parameter comes from load_from; no ImageNet download needed
+    from umv.checkpoint import detect_variant, load_checkpoint_file
+    ckpt_sd, _ = load_checkpoint_file(cfg.load_from)
+    got, want = detect_variant(ckpt_sd), (bb or {}).get('variant')
+    if got and want and got != want:
+        raise SystemExit(f'ERROR: the checkpoint is U-MV-{got} but the config is U-MV-{want}; '
+                         f'use configs/mambavision/U-MV-{got}.py')
 
     if args.test_split:
         cfg.test_dataloader.dataset.data_prefix = dict(
@@ -135,6 +144,15 @@ def main():
 
     # build the runner from config
     runner = Runner.from_cfg(cfg)
+
+    # load explicitly so that a silently ignored mismatch cannot produce random metrics
+    ckpt = runner.load_checkpoint(cfg.load_from, map_location='cpu')
+    missing = [k for k in runner.model.state_dict()
+               if k not in ckpt['state_dict'] and not k.startswith('decode_head.conv_seg')]
+    if missing:
+        raise SystemExit(f'ERROR: {len(missing)} model parameters are not in the checkpoint '
+                         f'(e.g. {missing[:3]}); config and checkpoint do not match')
+    print(f'-> checkpoint loaded: {len(ckpt["state_dict"])} tensors, no missing parameters')
 
     # start testing
     runner.test()

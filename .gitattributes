@@ -1,3 +1,5 @@
-Pretrained_Weights/*.pth filter=lfs diff=lfs merge=lfs -text
+* text=auto eol=lf
 *.cmd text eol=crlf
 *.ps1 text eol=crlf
+*.pth filter=lfs diff=lfs merge=lfs -text
+Pretrained_Weights/*.pth filter=lfs diff=lfs merge=lfs -text

@@ -12,7 +12,7 @@ import datetime
 from _pdfbook import (NUM, ROOT, S, Doc, NextPageTemplate, PageBreak, Paragraph, Spacer, chapter, cm,  # noqa: F401
                       heading, image, md_to_flowables, read, toc_block)
 
-VERSION = '1.2'
+VERSION = '1.3'
 DATE = datetime.date(2026, 9, 9).strftime('%d %B %Y')
 OUT = ROOT / 'docs' / 'U-MV_Technical_Handover_Guide.pdf'
 
@@ -64,9 +64,11 @@ is **not** needed.
 
 ## How to use this document
 
-- **Chapter 2 is the procedure.** Fourteen numbered steps take an empty Windows workstation to the reproduced
-  test metrics and a mapped orthomosaic: each step names where its commands run, gives them, and states the
-  expected result. Work through chapter 2 alone; consult the rest only when a step refers to it.
+- **Chapter 2 is the procedure.** It is written for a first-time user of command windows, Git and Docker:
+  step 0 explains the words used, steps 1 to 14 take an empty Windows workstation to the reproduced test
+  metrics and a mapped orthomosaic, and the table "If you see this message" at its end covers the errors
+  observed so far. Each step names where its commands run, gives them, and states the expected result.
+  Work through chapter 2 alone; consult the rest only when a step refers to it.
 - Chapter 3 describes the framework. Chapters 4 to 8 are the reference behind the steps: installation, data,
   training, evaluation and regional inference, including the Linux/WSL2 forms of every command.
 - Chapter 9 maps the paper to the configuration files and records the reconciliation with the original
@@ -133,10 +135,11 @@ story += chapter('C', 'Command reference', """
 ## Windows (PowerShell, in D:\\U-MV)
 
 ```
+$env:GIT_LFS_SKIP_SMUDGE = "1"                     # before git clone / git pull (no LFS download)
 tools\\windows\\copy_archive.cmd D:\\A.tortilis_Data_Model   # copy dataset + weights from Z:, check counts
 copy docker\\.env.windows.example docker\\.env       # then edit the two paths if needed
-docker\\umv.cmd gpu                                 # GPU visible to Docker?
-docker\\umv.cmd build 7.5                           # image build; 7.5 = TITAN RTX, 8.6 = RTX A5000
+docker\\umv.cmd gpu                                 # GPU visible to Docker? (name, memory, arch)
+docker\\umv.cmd build                               # image build (all GPUs); "build 8.6 4" = MMCV CUDA ops
 docker\\umv.cmd shell                               # interactive container; exit to leave
 ```
 

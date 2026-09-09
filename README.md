@@ -78,9 +78,12 @@ python tools/check_dataset.py /data --splits train val test2 Generalizability
 ```
 
 On Windows (PowerShell + Docker Desktop) the same steps are
-`copy docker\.env.windows.example docker\.env`, `docker\umv.cmd build 7.5`
-(GPU architecture number) and `docker\umv.cmd shell`; the full from-scratch
-procedure is [docs/08_handover_checklist.md](docs/08_handover_checklist.md).
+`copy docker\.env.windows.example docker\.env`, `docker\umv.cmd build` and
+`docker\umv.cmd shell`; the full from-scratch procedure for a first-time user,
+including copying the archive with `tools\windows\copy_archive.cmd`, is
+[docs/08_handover_checklist.md](docs/08_handover_checklist.md). Clone with
+`$env:GIT_LFS_SKIP_SMUDGE = "1"` set when the archive's checkpoints are
+available, to avoid the Git LFS download.
 
 Manual installation (conda, CUDA 11.8 toolkit with `nvcc`) is described in
 [docs/01_installation.md](docs/01_installation.md).

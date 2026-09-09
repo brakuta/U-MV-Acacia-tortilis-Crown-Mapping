@@ -5,6 +5,8 @@
 # Inside the container: dataset at /data, checkpoints at /weights (read-only),
 # training outputs in /workspace/U-MV/work_dirs.  On WSL2 a Windows drive is
 # reachable as /mnt/<letter>; paths with spaces must be quoted in docker/.env.
+name: umv
+
 services:
   umv:
     image: umv:latest
@@ -22,11 +24,12 @@ services:
       - HF_HOME=/workspace/hf_cache
       - HF_HUB_OFFLINE=${HF_HUB_OFFLINE:-0}
       - PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+      - TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD=1
       - GDAL_CACHEMAX=2048
     volumes:
       - ..:/workspace/U-MV                     # live source tree (edits visible immediately)
-      - ${DATA_DIR:-./data}:/data              # dataset and orthomosaics
-      - ${WEIGHTS_DIR:-./Pretrained_Weights}:/weights:ro   # checkpoints / original work dirs
+      - ${DATA_DIR:-../data}:/data              # dataset and orthomosaics
+      - ${WEIGHTS_DIR:-../Pretrained_Weights}:/weights:ro   # checkpoints / original work dirs
       - hf_cache:/workspace/hf_cache           # MambaVision code + ImageNet weights
       - ${WORK_DIRS:-../work_dirs}:/workspace/U-MV/work_dirs
       - ${SCRATCH_DIR:-umv_scratch}:/tmp/geospatial_work

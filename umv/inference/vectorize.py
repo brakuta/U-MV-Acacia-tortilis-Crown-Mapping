@@ -41,9 +41,12 @@ def _polygonize_gdal(tmp_bin: Path, tmp_vec: Path, connectivity: int) -> bool:
     if tmp_vec.exists():
         drv.DeleteDataSource(str(tmp_vec))
     dst_ds = drv.CreateDataSource(str(tmp_vec))
-    srs = osr.SpatialReference()
-    srs.ImportFromWkt(src_ds.GetProjection())
-    layer = dst_ds.CreateLayer('polygons', srs=srs, geom_type=ogr.wkbMultiPolygon)
+    wkt = src_ds.GetProjection()
+    srs = None
+    if wkt:
+        srs = osr.SpatialReference()
+        srs.ImportFromWkt(wkt)
+    layer = dst_ds.CreateLayer('polygons', srs=srs, geom_type=ogr.wkbPolygon)
     layer.CreateField(ogr.FieldDefn('value', ogr.OFTInteger))
     opts = ['8CONNECTED=8'] if connectivity == 8 else []
     # the band itself is used as mask -> only non-zero pixels are polygonised
@@ -73,12 +76,13 @@ def _polygonize_rasterio(tmp_bin: Path, connectivity: int, max_pixels: int):
 def _mean_prob(prob_ds, geom, scale: float) -> float:
     from rasterio.features import geometry_mask, geometry_window
     from rasterio.windows import transform as win_transform
+    from rasterio.errors import WindowError
     try:
-        win = geometry_window(prob_ds, [geom], pad_x=2, pad_y=2, north_up=True, pixel_precision=3)
+        win = geometry_window(prob_ds, [geom], pad_x=2, pad_y=2, pixel_precision=3)
         block = prob_ds.read(1, window=win, boundless=True, fill_value=0)
         m = geometry_mask([geom], out_shape=(win.height, win.width),
                           transform=win_transform(win, prob_ds.transform), invert=True)
-    except Exception:  # degenerate geometry -> full read (rare)
+    except (ValueError, WindowError):  # degenerate geometry -> full read (rare)
         block = prob_ds.read(1)
         m = geometry_mask([geom], out_shape=(prob_ds.height, prob_ds.width),
                           transform=prob_ds.transform, invert=True)
@@ -137,7 +141,12 @@ def polygonize_probability(prob_path: str,
     n_raw = len(gdf)
     if n_raw:
         gdf = gdf.reset_index(drop=True)
-        gdf['area'] = gdf.geometry.area.astype('float64').round(3)
+        if gdf.crs is not None and gdf.crs.is_geographic:
+            utm = gdf.estimate_utm_crs()  # areas in m^2 rather than square degrees
+            print(f'   (geographic CRS {gdf.crs.to_string()}: areas computed in {utm.to_string()})')
+            gdf['area'] = gdf.geometry.to_crs(utm).area.astype('float64').round(3)
+        else:
+            gdf['area'] = gdf.geometry.area.astype('float64').round(3)
         if min_area > 0:
             gdf = gdf[gdf['area'] >= min_area].reset_index(drop=True)
         if compute_mean_prob and len(gdf):
