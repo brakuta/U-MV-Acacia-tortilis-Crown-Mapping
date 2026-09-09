@@ -82,7 +82,7 @@ robocopy "$Z\$W" "$H\$W" /E /MT:16 /R:2 /W:5
 
 Expected: in each summary, *Failed* = 0 and *Copied* + *Skipped* = *Total*.
 
-### Get the code and point it at the folders (WSL2 terminal)
+### Get the code and point it at the folders (WSL2 terminal, or PowerShell)
 
 ```bash
 cd ~
@@ -98,6 +98,20 @@ Set the two lines (keep the quotes), save with Ctrl+O, Enter, exit with Ctrl+X:
 DATA_DIR="/mnt/h/A.tortilis_Data & Model/Data used to build the model"
 WEIGHTS_DIR="/mnt/h/A.tortilis_Data & Model/A.tortilis Models/Pretrained weights"
 ```
+
+**Working from Windows PowerShell instead of WSL2** is equally possible with
+Docker Desktop. Clone to a short path (`git clone ... D:\U-MV`; `cd D:\U-MV`),
+edit the file with `notepad docker\.env` (there is no `nano` on Windows) and
+use Windows paths:
+
+```
+DATA_DIR="H:\A.tortilis_Data & Model\Data used to build the model"
+WEIGHTS_DIR="H:\A.tortilis_Data & Model\A.tortilis Models\Pretrained weights"
+```
+
+The `docker compose ... build` and `run` commands below are identical in
+PowerShell; once inside the container everything is Linux. If a mount error
+mentions the path, rename the folder to remove the `&`.
 
 ### Build and start the container
 
