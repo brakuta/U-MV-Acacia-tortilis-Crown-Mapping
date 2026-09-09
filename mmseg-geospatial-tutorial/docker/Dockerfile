@@ -2,9 +2,18 @@
 #   docker compose --env-file docker/.env -f docker/docker-compose.yml build   (30-50 min: mmcv is compiled)
 FROM pytorch/pytorch:2.6.0-cuda11.8-cudnn9-devel
 
+# Build-time knobs (override: docker compose build --build-arg MAX_JOBS=2 --build-arg CUDA_ARCH="7.5")
+#   MAX_JOBS  : parallel nvcc jobs when compiling mmcv; each needs ~2 GB RAM. Use 2 on machines
+#               where Docker/WSL2 has <= 16 GB, 4 for 32 GB, 8 for 64 GB.
+#   CUDA_ARCH : GPU architectures to compile for. Only your GPU is needed:
+#               TITAN RTX / RTX 20xx = 7.5, RTX A5000 / RTX 30xx = 8.6, A100 = 8.0, RTX 40xx = 8.9.
+#               Compiling several architectures multiplies memory and time.
+ARG MAX_JOBS=4
+ARG CUDA_ARCH="7.5;8.6"
+
 ARG DEBIAN_FRONTEND=noninteractive
 ENV PIP_NO_CACHE_DIR=1 PYTHONUNBUFFERED=1 \
-    TORCH_CUDA_ARCH_LIST="7.5;8.0;8.6;8.9;9.0" FORCE_CUDA=1 MMCV_WITH_OPS=1 MAX_JOBS=8
+    TORCH_CUDA_ARCH_LIST=${CUDA_ARCH} FORCE_CUDA=1 MMCV_WITH_OPS=1 MAX_JOBS=${MAX_JOBS}
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
         git build-essential ninja-build ca-certificates curl tmux \
