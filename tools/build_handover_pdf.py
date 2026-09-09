@@ -57,8 +57,9 @@ recent.
 
 ## How to use this document
 
-- **Chapter 3 is the shortest path**: what to copy, how to configure, and a step table with an expected outcome
-  for every step. A reader in a hurry can work from chapter 3 alone.
+- **Chapter 3 is the complete procedure**, from an empty Windows workstation to the reproduced test metrics
+  and a mapped orthomosaic, one command per step with the expected result. A reader in a hurry works from
+  chapter 3 alone.
 - Chapter 2 describes the framework; chapters 4 to 8 give the full installation, data, training, evaluation and
   inference reference behind the steps of chapter 3.
 - Chapter 9 maps the paper to the configuration files and records the reconciliation with the original
@@ -106,7 +107,7 @@ Values in percent (paper, Table 1). On the generalisability set (~11 km², 2 165
 
 # 3 hand-over guide (complete procedure)
 h08 = read('docs/08_handover_checklist.md').split('\n', 1)[1]  # drop title line
-story += chapter('3', 'Hand-over guide: what you receive and how to proceed', h08)
+story += chapter('3', 'Hand-over procedure: from scratch to a verified model', h08)
 
 # 4-8
 story += chapter('4', 'Software environment and installation', read('docs/01_installation.md'))
