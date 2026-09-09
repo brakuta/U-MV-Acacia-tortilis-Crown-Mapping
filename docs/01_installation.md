@@ -43,7 +43,7 @@ MambaVision does **not** call `causal_conv1d`; that package is optional.
 ```bash
 git clone https://github.com/brakuta/U-MV-Acacia-tortilis-Crown-Mapping.git
 cd U-MV-Acacia-tortilis-Crown-Mapping
-git lfs install && git lfs pull            # released checkpoints; skip if the project archive is available
+git lfs install && git lfs pull      # released checkpoints; not needed with the project archive
 cp docker/.env.example docker/.env && nano docker/.env   # DATA_DIR, WEIGHTS_DIR
 docker compose --env-file docker/.env -f docker/docker-compose.yml build
 ```
@@ -55,11 +55,28 @@ i.e. TITAN RTX and RTX A5000; pass only your GPU's value) and `MAX_JOBS`
 machine where Docker/WSL2 has 16 GB or less:
 
 ```bash
-docker compose --env-file docker/.env -f docker/docker-compose.yml build --build-arg MAX_JOBS=2 --build-arg CUDA_ARCH="7.5"
+docker compose --env-file docker/.env -f docker/docker-compose.yml build \
+    --build-arg MAX_JOBS=2 --build-arg CUDA_ARCH="7.5"
 ```
 
 `nvidia-smi` prints the GPU name; 7.5 = TITAN RTX / RTX 20xx, 8.6 = RTX A5000 /
 RTX 30xx, 8.0 = A100, 8.9 = RTX 40xx.
+
+### Windows (PowerShell + Docker Desktop)
+
+`docker\umv.cmd` wraps the same compose commands for a PowerShell or cmd
+window, so that no long command has to be typed; `docker\.env.windows.example`
+is a ready-made `.env` with Windows paths (forward slashes, quoted):
+
+```powershell
+copy docker\.env.windows.example docker\.env   # then edit the two paths if needed
+docker\umv.cmd gpu                             # Docker can see the GPU?
+docker\umv.cmd build 7.5                       # = compose build with MAX_JOBS=2, CUDA_ARCH=7.5
+docker\umv.cmd shell                           # = compose run --rm umv
+```
+
+The complete Windows procedure, including copying the archive from the share
+with `tools\windows\copy_archive.cmd`, is `docs/08_handover_checklist.md`.
 
 ### Run
 

@@ -72,7 +72,7 @@ the location of the hand-over folder.
 
 * The Docker image build (MMCV and mamba-ssm compilation) and the Hugging Face
   backbone instantiation; the Hub was unreachable from the sandbox in which
-  this revision was prepared. Run `docs/08_handover_checklist.md` steps 5–10 on
+  this revision was prepared. Run `docs/08_handover_checklist.md` steps 7–12 on
   the workstation and report any deviation.
 * Numerical equivalence of the released checkpoints with the paper's metrics.
 

@@ -1,89 +1,120 @@
-# 8. Hand-over procedure: from scratch to a verified model
+# 8. Setup procedure (Windows, from scratch)
 
 This chapter is the complete procedure for the receiving team member. It
-assumes nothing has been done yet, a Windows 11 workstation with an NVIDIA
-GPU, read access to the project share (`Z:`), and Windows PowerShell as the
-shell. Do the steps in order; every command is one line even where it wraps
-on the page, and each step ends with what you should see. The other chapters
-are reference material; this one is sufficient on its own.
+starts from an empty Windows 11 workstation with an NVIDIA GPU, read access
+to the project share (`Z:`), and Windows PowerShell. Fourteen steps, in
+order. Each step says where the commands run (PowerShell or inside the
+container), gives the commands, and states what a successful result looks
+like. Commands are copied line by line; a line ending in a backslash
+continues on the next line and is pasted together with it. The other chapters are reference material and are not needed to
+complete this one.
 
-## What you receive
+Overview (steps 1 to 8 are done once; steps 9 to 12 verify the installation):
 
-| Item | Where | What it is |
-|---|---|---|
-| Code | https://github.com/brakuta/U-MV-Acacia-tortilis-Crown-Mapping | model, configs, Docker build, tools, tests, this guide |
-| Dataset | `Z:\...\A.tortilis_Data & Model\Data used to build the model` | `img_dir/` and `ann_dir/` with `train`, `val`, `test2`, `Generalizability` (1024 × 1024 tiles, ~32 GB) |
-| Trained models | `Z:\...\A.tortilis_Data & Model\A.tortilis Models\Pretrained weights` | three MMSegmentation work directories with checkpoints, training configs and logs (~2.5 GB) |
-
-The archive also contains `A.tortilis Models\MMsegmentation Folder`; it is the
-superseded container workspace and is **not** needed.
+| Step | What | Where | Time |
+|---|---|---|---|
+| 1 | Prerequisites: driver, Docker Desktop, Git | Windows | 10 min |
+| 2 | Download the code (`git clone`) | PowerShell | 1 min |
+| 3 | Copy the archive from `Z:` to a local disk | PowerShell | 10–60 min |
+| 4 | Give Docker enough memory | PowerShell | 2 min |
+| 5 | Confirm Docker can use the GPU | PowerShell | 1 min |
+| 6 | Tell Docker where the data is (`docker\.env`) | PowerShell | 1 min |
+| 7 | Build the image | PowerShell | 30–60 min |
+| 8 | Start the container | PowerShell | 1 min |
+| 9 | Verify the software | container | 2 min |
+| 10 | Verify the dataset | container | 1 min |
+| 11 | Identify the checkpoint | container | 1 min |
+| 12 | Reproduce the published accuracy | container | 30 min |
+| 13 | Map an orthomosaic (optional) | container | varies |
+| 14 | Leave and come back | both | – |
 
 Facts to know before starting:
 
-* **Which weights.** `best_mIoU_iter_*.pth` in each work directory (checkpoint
-  selected on validation mIoU, used for the paper's test results): tiny
-  `best_mIoU_iter_100000.pth`, small `best_mIoU_iter_95000.pth`, base
-  `best_mIoU_iter_60000.pth`. Every tool accepts the folder in place of the
+* **Which weights.** `best_mIoU_iter_*.pth` in each work directory (the
+  checkpoint with the best validation mIoU, used for the paper's test
+  results): tiny `best_mIoU_iter_100000.pth`, small `best_mIoU_iter_95000.pth`,
+  base `best_mIoU_iter_60000.pth`. Every tool accepts the folder instead of the
   file and selects it automatically. The files on GitHub are byte-identical
   copies; Git LFS is not needed.
 * **Which model.** Start with U-MV-small; it produced the regional maps and
   has the best generalisability figures.
 * **Dataset.** The archive holds 4 893 (train), 2 407 (val), 3 123 (test2)
-  and 2 162 (Generalizability) tiles. The published models were trained on
-  26 615 tiles; the training folder was pruned afterwards. Evaluation and
-  inference are exact; retraining reproduces the recipe, not the model.
+  and 2 162 (Generalizability) tiles of 1024 × 1024 pixels. The published
+  models were trained on 26 615 tiles; the training folder was pruned
+  afterwards. Evaluation and inference are exact; retraining reproduces the
+  recipe, not the model.
 * **Confidentiality.** The dataset is not publicly shareable.
 
-## Step 0 — Prerequisites (once per machine)
+## Step 1 — Prerequisites
+
+> Windows · once per machine
 
 | Need | How to get or check it |
 |---|---|
-| NVIDIA driver ≥ 520 | `nvidia-smi` in PowerShell prints a table with the GPU name and driver version; otherwise install the driver from nvidia.com |
-| Docker Desktop | install from docker.com; in Settings → General keep "Use the WSL 2 based engine"; a steady whale icon in the tray means the engine runs |
-| Git | `git --version`; otherwise install Git for Windows (git-scm.com) with default options |
-| Disk | ~40 GB free on the local data disk for the archive copy; ~40 GB on `C:` for the Docker image |
-| RAM | Task Manager → Performance → Memory: note the total (needed in step 2) |
-| Internet | required for the image build and the first model download |
+| NVIDIA driver ≥ 520 | open PowerShell (Start → type `PowerShell` → Enter) and run `nvidia-smi`; a table with the GPU name and driver version must appear. Otherwise install the driver from nvidia.com |
+| Docker Desktop | install from docker.com and start it; in Settings → General keep "Use the WSL 2 based engine". A steady whale icon in the tray means the engine runs |
+| Git | `git --version` in PowerShell; otherwise install Git for Windows (git-scm.com) with the default options |
+| Disk | about 40 GB free on the local data disk (`D:` below) and 40 GB on `C:` for the Docker image |
+| RAM | Task Manager → Performance → Memory: note the total (needed in step 4) |
+| Internet | needed for steps 2, 5, 7 and 9 |
 
-Open PowerShell (Start → type `PowerShell` → Enter) for all commands that are
-not marked "inside the container".
+Use one PowerShell window for the whole procedure. Commands marked "inside
+the container" (steps 9 to 13) are typed in the same window after step 8.
 
-## Step 1 — Copy the archive to a local disk (PowerShell)
+## Step 2 — Download the code
 
-Reading tiles from the share is too slow for training and evaluation. Copy
-to a short local path **without** the `&` character (Docker and PowerShell
-both dislike it); `D:\A.tortilis_Data_Model` is used below. Run the three
-lines one at a time:
+> PowerShell · once · the repository is public
 
 ```powershell
-$Z = "Z:\Final Geodatabase\Vegetation_Geodatabase\3_Mapping Acacia tortilis Trees\A.tortilis_Data & Model"
-robocopy "$Z\Data used to build the model" "D:\A.tortilis_Data_Model\Data used to build the model" /E /XF *.aux.xml *.ovr *.xml /MT:16 /R:2 /W:5
-robocopy "$Z\A.tortilis Models\Pretrained weights" "D:\A.tortilis_Data_Model\A.tortilis Models\Pretrained weights" /E /MT:16 /R:2 /W:5
+cd D:\
+git clone https://github.com/brakuta/U-MV-Acacia-tortilis-Crown-Mapping.git U-MV
+cd D:\U-MV
+git log -1 --format=%cd
 ```
 
-**You should see:** in each summary, *Failed* = 0 and *Copied* + *Skipped* =
-*Total*. Then check the tiles:
+**You should see:** a `Cloning into 'U-MV'...` message and then the date of
+the latest commit. The code is now in `D:\U-MV`. *If a copy from an earlier
+attempt exists* (any folder that already contains `docker\Dockerfile`),
+rename or delete it first, or open it and run `git pull` instead of cloning.
+Any other location works; use it wherever `D:\U-MV` appears below.
+
+## Step 3 — Copy the archive to a local disk
+
+> PowerShell, in `D:\U-MV` · once · 10 to 60 minutes
+
+Tiles must not be read from the share (too slow). The copy goes to a short
+path **without** the `&` character; `D:\A.tortilis_Data_Model` is used
+everywhere below. One command does the copy, checks the tile counts and
+prints the two lines needed in step 6:
 
 ```powershell
-$root = "D:\A.tortilis_Data_Model\Data used to build the model"; foreach ($s in 'train','val','test2','Generalizability') { "{0,-18} img={1,6} ann={2,6}" -f $s, (Get-ChildItem "$root\img_dir\$s" -Filter *.tif -File).Count, (Get-ChildItem "$root\ann_dir\$s" -Filter *.tif -File).Count }
+tools\windows\copy_archive.cmd D:\A.tortilis_Data_Model
 ```
 
-**You should see:** `train 4893/4893`, `val 2407/2407`, `test2 3123/3123`,
-`Generalizability 2162/2162`. If the archive was copied earlier to another
-place (for example under `D:\Vegetiation\...`), keep it and use that path in
-step 4; only make sure its name contains no `&`.
+**You should see:** two robocopy summaries with `Failed 0`, then the tile
+counts marked `ok` (`train 4893`, `val 2407`, `test2 3123`,
+`Generalizability 2162`), three `best_mIoU_iter_*.pth` paths, and
+`RESULT: OK`. *If the archive was copied earlier* to another folder whose
+name contains no `&`, keep it and skip this step; note its path for step 6.
+*If the source is not found*, connect the `Z:` drive (File Explorer → This
+PC) and run the command again. The script can be run again at any time; it
+only copies what is missing. (It runs `tools\windows\copy_archive.ps1`, which
+can also be given `-Source` if the share is mounted under another letter.)
 
-## Step 2 — Give Docker enough memory (once)
+## Step 4 — Give Docker enough memory
 
-Docker Desktop runs inside WSL2; the image build compiles software and needs
-several GB. Set the WSL2 limit below the machine's total RAM (24GB on a
-32 GB machine, 40GB on 64 GB):
+> PowerShell · once
+
+Docker Desktop runs inside WSL2, and the image build compiles software that
+needs several GB. Set the WSL2 limit below the machine's total RAM: 24GB on
+a 32 GB machine, 40GB on 64 GB.
 
 ```powershell
 notepad $env:USERPROFILE\.wslconfig
 ```
 
-Make the file's content exactly the following, save with Ctrl+S, close:
+Notepad asks whether to create the file: answer Yes. Make its content
+exactly the following, save with Ctrl+S, close Notepad:
 
 ```
 [wsl2]
@@ -91,94 +122,89 @@ memory=24GB
 swap=8GB
 ```
 
-Apply it and wait about a minute until Docker Desktop shows "Engine running"
-again:
+Apply the setting (Docker Desktop restarts its engine; wait until the tray
+icon is steady again, about one minute):
 
 ```powershell
 wsl --shutdown
 ```
 
-## Step 3 — Confirm Docker can use the GPU
+## Step 5 — Confirm Docker can use the GPU
+
+> PowerShell, in `D:\U-MV` · once
 
 ```powershell
-docker run --rm --gpus all nvidia/cuda:11.8.0-base-ubuntu22.04 nvidia-smi
+docker\umv.cmd gpu
 ```
 
-**You should see:** the GPU table printed from inside a container. Note the
-GPU name. *If not:* Docker Desktop → Settings → Resources → WSL integration →
-enable the default distribution → Apply & restart.
+**You should see:** the same GPU table as `nvidia-smi`, printed from inside
+a container (the first run downloads a small test image). Note the GPU name
+for step 7. *If it fails:* Docker Desktop → Settings → Resources → WSL
+integration → enable the default distribution → Apply & restart, then repeat.
 
-## Step 4 — Get the code and point it at the data
+## Step 6 — Tell Docker where the data is
+
+> PowerShell, in `D:\U-MV` · once
 
 ```powershell
-cd D:\
-git clone https://github.com/brakuta/U-MV-Acacia-tortilis-Crown-Mapping.git U-MV
-cd D:\U-MV
-copy docker\.env.example docker\.env
-notepad docker\.env
-```
-
-(If the repository was cloned before, `cd` into it and run `git pull`
-instead of cloning.) Replace everything in Notepad with the three lines
-below, adjusted to where the archive was copied in step 1, keep the quotes,
-save, close:
-
-```
-DATA_DIR="D:\A.tortilis_Data_Model\Data used to build the model"
-WEIGHTS_DIR="D:\A.tortilis_Data_Model\A.tortilis Models\Pretrained weights"
-HF_HUB_OFFLINE=0
-```
-
-```powershell
+copy docker\.env.windows.example docker\.env
 type docker\.env
 ```
 
-**You should see:** the three lines exactly as written.
+**You should see:** the file content, whose two path lines are
 
-## Step 5 — Find the GPU architecture number
+```
+DATA_DIR="D:/A.tortilis_Data_Model/Data used to build the model"
+WEIGHTS_DIR="D:/A.tortilis_Data_Model/A.tortilis Models/Pretrained weights"
+```
 
-From the GPU name of step 3:
+These are correct if step 3 used `D:\A.tortilis_Data_Model`. Otherwise run
+`notepad docker\.env` and replace the two paths with the ones printed at the
+end of step 3 (forward slashes, quotes kept), save, close.
 
-| GPU | `CUDA_ARCH` |
+## Step 7 — Build the image
+
+> PowerShell, in `D:\U-MV` · once · 30 to 60 minutes
+
+Find the architecture number of the GPU named in step 5:
+
+| GPU | Number |
 |---|---|
 | TITAN RTX, RTX 2060 / 2070 / 2080, Quadro RTX 4000–8000 | `7.5` |
 | RTX A4000 / A5000 / A6000, RTX 3060 / 3070 / 3080 / 3090 | `8.6` |
 | A100 | `8.0` |
 | RTX 4070 / 4080 / 4090, RTX 6000 Ada | `8.9` |
 
-## Step 6 — Build the image (30 to 60 minutes)
-
-Use the `CUDA_ARCH` of step 5. Keep `MAX_JOBS=2` unless the machine has 64 GB
-of RAM (then `4`):
+Then build with that number (`7.5` is shown; replace it if different):
 
 ```powershell
-docker compose --env-file docker/.env -f docker/docker-compose.yml build --build-arg MAX_JOBS=2 --build-arg CUDA_ARCH="7.5"
+docker\umv.cmd build 7.5
 ```
 
-Leave the window open and the computer awake. Stages in order: base image
-download (`sha256:` lines), `apt` packages, `conda` packages, the MMCV
-compilation (long, few visible lines), `mamba-ssm`, the project install.
+Leave the window open and the computer awake. The stages appear in this
+order: base image download (`sha256:` lines), `apt` packages, `conda`
+packages, the MMCV compilation (long, few visible lines), `mamba-ssm`, the
+project install.
 
-**You should see:** the build ends without `ERROR`, and
+**You should see:** `Build finished. Next: docker\umv.cmd shell`. To
+double-check, `docker images umv` prints one line with `umv` and `latest`.
+
+*`cannot allocate memory`:* raise `memory=` in step 4, run `wsl --shutdown`,
+run the build command again (finished stages are reused). *Any other
+`ERROR`:* copy the last 60 lines of the window and send them to the project
+lead. On a machine with 64 GB of RAM the build can use four compiler jobs:
+`docker\umv.cmd build 7.5 4`.
+
+## Step 8 — Start the container
+
+> PowerShell, in `D:\U-MV` · every session
 
 ```powershell
-docker images umv
+docker\umv.cmd shell
 ```
 
-prints one line with `umv` and `latest`.
-
-*`ERROR ... cannot allocate memory`:* raise `memory=` in step 2, run
-`wsl --shutdown`, repeat step 6 (finished stages are reused). *Any other
-`ERROR`:* copy the last 60 lines and send them.
-
-## Step 7 — Start the container
-
-```powershell
-docker compose --env-file docker/.env -f docker/docker-compose.yml run --rm umv
-```
-
-**You should see:** the prompt becomes `root@...:/workspace/U-MV#`. You are
-now inside Linux; steps 8 to 12 run here. Check the mounts:
+**You should see:** the prompt changes to `root@...:/workspace/U-MV#`. You
+are now inside Linux; steps 9 to 13 are typed here. Check the mounts:
 
 ```bash
 ls /data
@@ -186,33 +212,39 @@ ls /weights
 nvidia-smi
 ```
 
-**You should see:** `ann_dir  img_dir`; the three `mambavision-*` folders; the
-GPU table. *If `/data` is empty:* type `exit`, correct `docker\.env` (step 4),
-repeat step 7.
+**You should see:** `ann_dir  img_dir`; three `mambavision-*` folders; the
+GPU table. *If `/data` or `/weights` is empty:* type `exit`, correct
+`docker\.env` (step 6), run step 8 again.
 
-## Step 8 — Verify the software (inside the container)
+## Step 9 — Verify the software
+
+> inside the container · once
 
 ```bash
 python tools/verify_install.py --variant small
 ```
 
-The first run downloads the MambaVision-S encoder (~200 MB) from the Hugging
-Face Hub.
+The first run downloads the MambaVision-S encoder (about 200 MB) from the
+Hugging Face Hub.
 
-**You should see:** every library with a version, `CUDA available: True` with
-the GPU name, `mamba_ssm selective_scan_fn: ok`, `mmcv.ops ... ok`,
+**You should see:** every library with a version, `CUDA available: True`
+with the GPU name, `mamba_ssm selective_scan_fn: ok`, `mmcv.ops ... ok`,
 `forward (1, 3, 512, 512) -> (1, 2, 512, 512)`, and `RESULT: OK`.
 
-## Step 9 — Verify the dataset (inside the container)
+## Step 10 — Verify the dataset
+
+> inside the container · once
 
 ```bash
 python tools/check_dataset.py /data --splits train val test2 Generalizability
 ```
 
-**You should see:** the four pair counts of step 1, mask values `[0, 1]`, and
-`RESULT: OK`.
+**You should see:** the four tile counts of step 3, mask values `[0, 1]`,
+and `RESULT: OK`.
 
-## Step 10 — Identify the checkpoint (inside the container)
+## Step 11 — Identify the checkpoint
+
+> inside the container · once
 
 ```bash
 python tools/inspect_checkpoint.py "/weights/mambavision-s_generic-unet_acacia-88"
@@ -221,7 +253,9 @@ python tools/inspect_checkpoint.py "/weights/mambavision-s_generic-unet_acacia-8
 **You should see:** `"path": ".../best_mIoU_iter_95000.pth"`,
 `"variant": "small"`, `"iteration": 95000`.
 
-## Step 11 — Reproduce the published accuracy (inside the container)
+## Step 12 — Reproduce the published accuracy
+
+> inside the container · once · 10 to 20 minutes per run
 
 ```bash
 CKPT="/weights/mambavision-s_generic-unet_acacia-88"
@@ -229,47 +263,74 @@ python tools/test.py configs/mambavision/U-MV-small.py "$CKPT" --test-split test
 python tools/test.py configs/mambavision/U-MV-small.py "$CKPT" --test-split Generalizability
 ```
 
-Each run takes 10 to 20 minutes and ends with a metric table.
+Each run ends with a metric table.
 
 **You should see:** on `test2`, `mIoU` ≈ 85.4 and `mFscore` ≈ 91.6 (paper:
 85.38 / 91.58); on `Generalizability`, ≈ 89.5 and ≈ 94.2 (paper: 89.48 /
-94.17). Send both tables to the project lead. Optional: repeat with
-`U-MV-tiny.py` + `mambavision-t_generic-unet_acacia` (tiny: 85.44 / 91.61 on
-`test2`) and `U-MV-base.py` + `mambavision-b_generic-unet_acacia` (base:
-85.30 / 91.52).
+94.17). Send both tables to the project lead. The installation is now
+verified.
 
-## Step 12 — Map one orthomosaic (inside the container, optional)
-
-From Windows, put a GeoTIFF orthomosaic into a new folder `orthos` inside
-`Data used to build the model`. Then:
+Optional, for the other two models:
 
 ```bash
-python tools/geospatial_inference.py --config configs/mambavision/U-MV-small.py --checkpoint "$CKPT" --input "/data/orthos/<name>.tif" --output "/data/predictions/<name>_crowns.gpkg" --scratch-dir /tmp/geospatial_work --min-area 1.0 --save-prob
+CKPT_T="/weights/mambavision-t_generic-unet_acacia"
+python tools/test.py configs/mambavision/U-MV-tiny.py "$CKPT_T" --test-split test2
+CKPT_B="/weights/mambavision-b_generic-unet_acacia"
+python tools/test.py configs/mambavision/U-MV-base.py "$CKPT_B" --test-split test2
 ```
 
-**You should see:** progress bars, then a JSON summary with `polygons`. The
-GeoPackage appears in Windows under `...\Data used to build the model\predictions`
-and opens in ArcGIS Pro or QGIS on top of the orthomosaic, with `area` and
-`mean_prob` attributes. Many orthomosaics: `tools/batch_geospatial_inference.py`
-with `--input-dir` / `--output-dir` (chapter on inference).
+(paper: tiny 85.44 / 91.61, base 85.30 / 91.52).
 
-## Step 13 — Leave and come back
+## Step 13 — Map an orthomosaic (optional)
 
-`exit` leaves the container. Next time only step 7 onward is needed (and
-`git pull` in `D:\U-MV` to receive updates); the image stays built. Training
-outputs go to `D:\U-MV\work_dirs`, predictions to wherever `--output` points.
+> inside the container · per orthomosaic
+
+In Windows, create the folder `orthos` inside
+`D:\A.tortilis_Data_Model\Data used to build the model` and put a GeoTIFF
+orthomosaic in it (any name; `site.tif` is used below). Then:
+
+```bash
+CKPT="/weights/mambavision-s_generic-unet_acacia-88"
+python tools/geospatial_inference.py \
+    --config configs/mambavision/U-MV-small.py --checkpoint "$CKPT" \
+    --input /data/orthos/site.tif --output /data/predictions/site_crowns.gpkg \
+    --scratch-dir /tmp/geospatial_work --min-area 1.0 --save-prob
+```
+
+(The command is one bash command written over four lines; the trailing
+backslashes join them. Paste all four lines together.)
+
+**You should see:** progress bars and a JSON summary with the number of
+`polygons`. In Windows the result is
+`...\Data used to build the model\predictions\site_crowns.gpkg`; it opens in
+ArcGIS Pro or QGIS on top of the orthomosaic, with `area` and `mean_prob`
+attributes. For a folder of orthomosaics use
+`tools/batch_geospatial_inference.py` with `--input-dir` and `--output-dir`
+(see the inference chapter).
+
+## Step 14 — Leave and come back
+
+> both
+
+`exit` leaves the container. The image stays built; next time only step 8
+is needed (`cd D:\U-MV` then `docker\umv.cmd shell`). To receive code
+updates, run `git pull` in `D:\U-MV` before step 8; the container sees the
+new files immediately. Training outputs go to `D:\U-MV\work_dirs`,
+predictions to wherever `--output` points.
 
 ## Alternative: the WSL2 Ubuntu terminal
 
-The same steps work from an Ubuntu (WSL2) terminal with Linux paths: the
+The same steps work from an Ubuntu (WSL2) terminal with Linux commands: the
 archive is visible as `/mnt/d/A.tortilis_Data_Model/...`, `nano` replaces
-`notepad`, and `docker compose ... run --rm umv` is identical. Nothing inside
-the container changes.
+`notepad`, `docker/.env.example` replaces `docker/.env.windows.example`, and
+the `docker compose ... build` and `run --rm umv` commands of the
+installation chapter replace `docker\umv.cmd`. Nothing inside the container
+changes.
 
 ## If something goes wrong
 
-Consult the troubleshooting chapter first. When reporting a problem, give the
-step number, the exact command, the last 60 lines of output and, for steps 8
-onward, the output of `python tools/verify_install.py`.
+Consult the troubleshooting chapter first. When reporting a problem, give
+the step number, the exact command, the last 60 lines of output and, for
+steps 9 onward, the output of `python tools/verify_install.py`.
 
 Contact: Mohamed Barakat A. Gibril (mbgibril@sharjah.ac.ae).

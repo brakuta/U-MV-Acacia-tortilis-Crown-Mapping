@@ -68,14 +68,19 @@ docs/                        01 installation … 08 hand-over checklist, REVISIO
 ```bash
 git clone https://github.com/brakuta/U-MV-Acacia-tortilis-Crown-Mapping.git
 cd U-MV-Acacia-tortilis-Crown-Mapping
-git lfs install && git lfs pull                       # released checkpoints; unnecessary if the project archive is available
+git lfs install && git lfs pull      # released checkpoints; not needed with the project archive
 cp docker/.env.example docker/.env                    # set DATA_DIR (dataset) and WEIGHTS_DIR (checkpoints)
-docker compose --env-file docker/.env -f docker/docker-compose.yml build   # 30-60 min (compiles MMCV, mamba-ssm)
+docker compose --env-file docker/.env -f docker/docker-compose.yml build   # 30-60 min
 docker compose --env-file docker/.env -f docker/docker-compose.yml run --rm umv
 # inside the container: dataset at /data, checkpoints at /weights
 python tools/verify_install.py --variant small
 python tools/check_dataset.py /data --splits train val test2 Generalizability
 ```
+
+On Windows (PowerShell + Docker Desktop) the same steps are
+`copy docker\.env.windows.example docker\.env`, `docker\umv.cmd build 7.5`
+(GPU architecture number) and `docker\umv.cmd shell`; the full from-scratch
+procedure is [docs/08_handover_checklist.md](docs/08_handover_checklist.md).
 
 Manual installation (conda, CUDA 11.8 toolkit with `nvcc`) is described in
 [docs/01_installation.md](docs/01_installation.md).

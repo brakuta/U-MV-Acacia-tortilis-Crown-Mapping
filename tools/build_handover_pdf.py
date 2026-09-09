@@ -4,15 +4,15 @@
     pip install reportlab            # fonts: Liberation (serif/sans) and DejaVu Sans Mono
     python tools/build_handover_pdf.py [--out docs/U-MV_Technical_Handover_Guide.pdf]
 
-The report consolidates README.md, docs/01-08, docs/REVISION_NOTES.md and
-Pretrained_Weights/README.md into one numbered document (see tools/_pdfbook.py).
+Chapter 1 orients the reader, chapter 2 is the from-scratch Windows procedure (docs/08), chapters 3-10
+are the reference (README, docs/01-07) and the appendices hold the revision notes, weights and commands.
 """
 import datetime
 
 from _pdfbook import (NUM, ROOT, S, Doc, NextPageTemplate, PageBreak, Paragraph, Spacer, chapter, cm,  # noqa: F401
                       heading, image, md_to_flowables, read, toc_block)
 
-VERSION = '1.1'
+VERSION = '1.2'
 DATE = datetime.date(2026, 9, 9).strftime('%d %B %Y')
 OUT = ROOT / 'docs' / 'U-MV_Technical_Handover_Guide.pdf'
 
@@ -40,44 +40,55 @@ story += [NextPageTemplate('main'), PageBreak()]
 
 story += toc_block()
 
-# 1 purpose
+# 1 read this first
 NUM.chapter('1')
-story += [PageBreak()] + heading(1, 'Purpose and scope of this document')
+story += [PageBreak()] + heading(1, 'Read this first')
 story += md_to_flowables("""
 This document accompanies the hand-over of the U-MV (U-shaped MambaVision) framework for *Acacia tortilis*
-crown mapping. It is written for a team member who has (i) the public repository and (ii) read access to the
+crown mapping. It is written for a team member who has (i) the public code repository and (ii) read access to the
 project archive `A.tortilis_Data & Model` on the shared drive, which holds the dataset and the original
-MMSegmentation work directories with the trained checkpoints. It enables that person to install the software,
-verify it, reproduce the published accuracy figures and produce regional crown maps from new UAV orthomosaics
+MMSegmentation work directories with the trained checkpoints. Following it, that person installs the software,
+verifies it, reproduces the published accuracy figures and produces regional crown maps from new UAV orthomosaics
 without further assistance.
 
-The document consolidates the repository documentation (`README.md`, `docs/01` to `docs/08`, `docs/REVISION_NOTES.md`)
-into one reference. The repository remains the authoritative source; where the two differ, the repository is more
-recent.
+## What you receive
+
+| Item | Where | What it is |
+|---|---|---|
+| Code | https://github.com/brakuta/U-MV-Acacia-tortilis-Crown-Mapping | model, configs, Docker build, tools, tests, this guide |
+| Dataset | `Z:\\...\\A.tortilis_Data & Model\\Data used to build the model` | `img_dir/` and `ann_dir/` with `train`, `val`, `test2`, `Generalizability` (1024 × 1024 tiles, ~32 GB) |
+| Trained models | `Z:\\...\\A.tortilis_Data & Model\\A.tortilis Models\\Pretrained weights` | three MMSegmentation work directories with checkpoints, training configs and logs (~2.5 GB) |
+
+The archive also contains `A.tortilis Models\\MMsegmentation Folder`; it is the superseded container workspace and
+is **not** needed.
 
 ## How to use this document
 
-- **Chapter 3 is the complete procedure**, from an empty Windows workstation to the reproduced test metrics
-  and a mapped orthomosaic, one command per step with the expected result. A reader in a hurry works from
-  chapter 3 alone.
-- Chapter 2 describes the framework; chapters 4 to 8 give the full installation, data, training, evaluation and
-  inference reference behind the steps of chapter 3.
+- **Chapter 2 is the procedure.** Fourteen numbered steps take an empty Windows workstation to the reproduced
+  test metrics and a mapped orthomosaic: each step names where its commands run, gives them, and states the
+  expected result. Work through chapter 2 alone; consult the rest only when a step refers to it.
+- Chapter 3 describes the framework. Chapters 4 to 8 are the reference behind the steps: installation, data,
+  training, evaluation and regional inference, including the Linux/WSL2 forms of every command.
 - Chapter 9 maps the paper to the configuration files and records the reconciliation with the original
   training logs. Chapter 10 lists failure modes with remedies.
-- Appendices record what changed in the code revision of September 2026, describe the released weights, and
-  provide a command reference.
+- The appendices record what changed in the code revision of September 2026, describe the released weights,
+  and give a one-page command reference.
 
 ## Conventions
 
-Commands are given for a shell inside the Docker container, where the dataset is mounted at `/data` and the checkpoint
-folder at `/weights`. Paths on the host are placeholders and must be adapted. Windows paths seen from WSL2 have the form
-`/mnt/<drive>/...`; paths containing spaces must be quoted.
+`PowerShell` commands run in a Windows PowerShell window in the repository folder (`D:\\U-MV`). Commands marked
+"inside the container" run in the Linux shell started by step 8, where the dataset is mounted at `/data` and the
+checkpoint folder at `/weights`. Paths on the host are examples and are adapted where the procedure says so.
 """)
+
+# 2 procedure (unnumbered step headings)
+h08 = read('docs/08_handover_checklist.md').split('\n', 1)[1]  # drop title line
+story += chapter('2', 'Setup procedure (Windows, from scratch)', h08, sections=False)
 
 # 2 overview
 readme = read('README.md')
 ov = readme.split('## Highlights', 1)[1].split('## Quick start', 1)[0]
-NUM.chapter('2')
+NUM.chapter('3')
 story += [PageBreak()] + heading(1, 'Framework overview')
 story += md_to_flowables("""
 U-MV couples the hierarchical MambaVision encoder of Hatamizadeh and Kautz (2025), a hybrid of Mamba state-space
@@ -105,10 +116,6 @@ Values in percent (paper, Table 1). On the generalisability set (~11 km², 2 165
 (base) for 100 000 iterations.
 """)
 
-# 3 hand-over guide (complete procedure)
-h08 = read('docs/08_handover_checklist.md').split('\n', 1)[1]  # drop title line
-story += chapter('3', 'Hand-over procedure: from scratch to a verified model', h08)
-
 # 4-8
 story += chapter('4', 'Software environment and installation', read('docs/01_installation.md'))
 story += chapter('5', 'Data', read('docs/02_data_preparation.md'))
@@ -123,7 +130,17 @@ story += chapter('10', 'Troubleshooting', read('docs/06_troubleshooting.md'))
 story += chapter('A', 'Revision notes (September 2026)', read('docs/REVISION_NOTES.md'))
 story += chapter('B', 'Pretrained weights', read('Pretrained_Weights/README.md'))
 story += chapter('C', 'Command reference', """
-## Environment
+## Windows (PowerShell, in D:\\U-MV)
+
+```
+tools\\windows\\copy_archive.cmd D:\\A.tortilis_Data_Model   # copy dataset + weights from Z:, check counts
+copy docker\\.env.windows.example docker\\.env       # then edit the two paths if needed
+docker\\umv.cmd gpu                                 # GPU visible to Docker?
+docker\\umv.cmd build 7.5                           # image build; 7.5 = TITAN RTX, 8.6 = RTX A5000
+docker\\umv.cmd shell                               # interactive container; exit to leave
+```
+
+## Environment (Linux / WSL2)
 
 ```
 cp docker/.env.example docker/.env                 # set DATA_DIR and WEIGHTS_DIR
