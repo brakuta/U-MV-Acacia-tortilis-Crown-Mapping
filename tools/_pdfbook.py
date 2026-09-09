@@ -163,12 +163,18 @@ STRIP_NUM = re.compile(r'^(\d+(\.\d+)*\.?|[A-Z]\.\d+(\.\d+)*)\s+')
 def heading(level, text):
     text = STRIP_NUM.sub('', text.strip())
     if level == 1:
-        p = Paragraph(f'{NUM.label}&nbsp;&nbsp;{inline(text)}', S['h1']); p._toc = (0, f'{NUM.label}  {text}')
+        pre = f'{NUM.label}&nbsp;&nbsp;' if NUM.label else ''
+        p = Paragraph(f'{pre}{inline(text)}', S['h1']); p._toc = (0, f'{NUM.label}  {text}'.strip())
         return [p]
     if level == 2:
+        if NUM.label == '':  # unnumbered mode (runbooks): keep the heading text as written
+            p = Paragraph(inline(text), S['h2']); p._toc = (1, text)
+            return [p]
         n = NUM.section()
         p = Paragraph(f'{n}&nbsp;&nbsp;{inline(text)}', S['h2']); p._toc = (1, f'{n}  {text}')
         return [p]
+    if NUM.label == '':
+        return [Paragraph(inline(text), S['h3'])]
     n = NUM.subsection()
     return [Paragraph(f'{n}&nbsp;&nbsp;{inline(text)}', S['h3'])]
 
