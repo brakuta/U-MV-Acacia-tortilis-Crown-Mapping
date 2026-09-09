@@ -11,6 +11,7 @@
 | `AssertionError: ... in_channels` / shape error at the first conv | `in_channels` ≠ bands produced by the loader | align `bands`, `in_channels`, `mean/std` lengths |
 | all-background predictions, mIoU ≈ 50 % (binary) | masks 0/255 or RGB; wrong suffix; `reduce_zero_label=True` on a 0-based mask | `check_dataset.py`; set `reduce_zero_label=False` |
 | loss NaN after a few hundred iterations | lr too high; no `clip_grad`; NaN/inf pixels in 16-bit input | lower lr, `clip_grad`, `nodata_fill`, `clip` |
+| Docker build fails at the MMCV step with `cannot allocate memory` / `Failed to build mmcv` | too many parallel `nvcc` jobs for the RAM given to Docker/WSL2 | rebuild with `--build-arg MAX_JOBS=2 --build-arg CUDA_ARCH="7.5"` (8.6 for RTX A5000); raise `memory=` in `.wslconfig`; cached layers are reused |
 | `CUDA out of memory` | batch/crop too large | `--amp`; smaller batch; smaller crop; `mode='slide'` at test |
 | GPU utilisation low, `data_time` high | CPU workers or disk | `num_workers` up; SSD; COG; smaller tiles |
 | `DataLoader worker ... Bus error` | container shared memory | run with `--ipc=host` (compose does) |

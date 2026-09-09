@@ -13,6 +13,7 @@
 | Test mIoU several points below the paper | Band order or resolution mismatch. | Ensure RGB orthomosaics, 2.5–3 cm GSD, no `--band-order bgr`. |
 | CUDA out of memory during training | 1024² tiles with batch 2 need ~20 GB on U-MV-b. | Use `--amp`, or `train_dataloader.batch_size=1` with doubled iterations. |
 | WSL2 freezes; GPU memory shows 24 GB + system RAM use | CUDA sysmem fallback exhausting host RAM. | Set *Prefer No Sysmem Fallback* in the NVIDIA Control Panel; reduce batch size; drop page cache between runs. |
+| Docker build fails at the MMCV step with `cannot allocate memory` / `Failed to build mmcv` | too many parallel `nvcc` jobs for the RAM given to Docker/WSL2 | rebuild with `--build-arg MAX_JOBS=2 --build-arg CUDA_ARCH="7.5"` (8.6 for RTX A5000); raise `memory=` in `.wslconfig`; cached layers are reused |
 | `RuntimeError: DataLoader worker ... Bus error` / shared-memory errors in Docker | `/dev/shm` too small. | Run with `--ipc=host` (compose file does) or `--shm-size=16g`. |
 | `osgeo` missing in inference | GDAL Python bindings absent. | Install via conda-forge; the rasterio fallback only handles rasters ≤ 1.5 gigapixels. |
 | Straight cut lines in the crown map | `--overlap` below ~128 or `--blend` misconfigured. | Keep the defaults (overlap 256, centre-crop). |

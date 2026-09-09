@@ -32,7 +32,8 @@ cd ~
 git clone <tutorial repository URL> mmseg-geospatial-tutorial
 cd mmseg-geospatial-tutorial
 cp docker/.env.example docker/.env      # edit DATA_DIR and WEIGHTS_DIR (next section)
-docker compose --env-file docker/.env -f docker/docker-compose.yml build   # 30-50 min once
+docker compose --env-file docker/.env -f docker/docker-compose.yml build \
+    --build-arg MAX_JOBS=2 --build-arg CUDA_ARCH="7.5"     # 30-50 min once; CUDA_ARCH = your GPU (7.5 TITAN RTX, 8.6 A5000)
 ```
 
 3. Verify:

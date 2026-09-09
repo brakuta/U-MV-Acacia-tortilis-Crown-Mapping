@@ -48,10 +48,18 @@ cp docker/.env.example docker/.env && nano docker/.env   # DATA_DIR, WEIGHTS_DIR
 docker compose --env-file docker/.env -f docker/docker-compose.yml build
 ```
 
-The build compiles MMCV and mamba-ssm and typically takes 30–60 min. The
-`TORCH_CUDA_ARCH_LIST` variable in `docker/Dockerfile` covers Turing (TITAN RTX,
-7.5), Ampere (RTX A5000, 8.6; A100, 8.0), Ada (8.9) and Hopper (9.0); extend it
-for other GPUs before building.
+The build compiles MMCV and mamba-ssm and typically takes 30–60 min. Two
+build arguments control the compilation: `CUDA_ARCH` (default `"7.5;8.6"`,
+i.e. TITAN RTX and RTX A5000; pass only your GPU's value) and `MAX_JOBS`
+(parallel compiler jobs, default 4; each needs about 2 GB of RAM). On a
+machine where Docker/WSL2 has 16 GB or less:
+
+```bash
+docker compose --env-file docker/.env -f docker/docker-compose.yml build --build-arg MAX_JOBS=2 --build-arg CUDA_ARCH="7.5"
+```
+
+`nvidia-smi` prints the GPU name; 7.5 = TITAN RTX / RTX 20xx, 8.6 = RTX A5000 /
+RTX 30xx, 8.0 = A100, 8.9 = RTX 40xx.
 
 ### Run
 

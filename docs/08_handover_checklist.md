@@ -118,8 +118,9 @@ mentions the path, rename the folder to remove the `&`.
 ```bash
 # 1. GPU visible to Docker?
 docker run --rm --gpus all nvidia/cuda:11.8.0-base-ubuntu22.04 nvidia-smi
-# 2. build the image (30-60 min), keeping a log
-docker compose --env-file docker/.env -f docker/docker-compose.yml build 2>&1 | tee ~/umv_build.log
+# 2. build the image (30-60 min). MAX_JOBS=2 if Docker/WSL2 has <= 16 GB RAM;
+#    CUDA_ARCH = your GPU: 7.5 TITAN RTX / RTX 20xx, 8.6 RTX A5000 / RTX 30xx, 8.9 RTX 40xx
+docker compose --env-file docker/.env -f docker/docker-compose.yml build --build-arg MAX_JOBS=2 --build-arg CUDA_ARCH="7.5"
 # 3. start an interactive container
 docker compose --env-file docker/.env -f docker/docker-compose.yml run --rm umv
 ```
