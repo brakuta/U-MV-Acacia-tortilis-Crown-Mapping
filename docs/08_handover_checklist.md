@@ -167,10 +167,10 @@ git pull
 
 > PowerShell · once · 10 to 60 minutes
 
-Tiles must not be read from the share (too slow). One command copies the
-dataset and the trained models to `D:\A.tortilis_Data_Model`, checks the tile
-counts and prints the two lines used in step 6. Nothing new appears for many
-minutes while it copies; that is normal.
+Tiles must not be read from the share (too slow), so the dataset and the
+trained models are copied to a local folder. One command does the copy,
+checks the tile counts and prints the two lines used in step 6. Nothing new
+appears for many minutes while it copies; that is normal.
 
 ```powershell
 cd D:\U-MV
@@ -182,14 +182,28 @@ tools\windows\copy_archive.cmd D:\A.tortilis_Data_Model
 `train              images= 4893  masks= 4893   ok` (also `val 2407`,
 `test2 3123`, `Generalizability 2162`, all marked `ok`), three
 `best_mIoU_iter_*.pth` paths under `Best checkpoints found:`, two lines
-starting with `DATA_DIR=` and `WEIGHTS_DIR=`, and `RESULT: OK`.
+starting with `DATA_DIR=` and `WEIGHTS_DIR=`, and `RESULT: OK`. Write down
+those two lines; step 6 uses them.
 
-*If the archive was copied earlier* to another folder whose name contains no
-`&`, keep it, skip this step, and use its path in step 6. *If red text says*
-`Source not found`, open File Explorer → This PC and make sure `Z:` opens;
-make sure PowerShell was not started as administrator; then repeat the
-command. The command can be repeated at any time; it copies only what is
-missing. *If the share has another drive letter* (for example `Y:`), use:
+**If the archive is already on the computer** (an earlier attempt, or someone
+copied it for you), do not copy it again. Check it instead, giving the folder
+that contains `Data used to build the model` (quotes are needed when the path
+contains spaces; add the word `check` at the end):
+
+```powershell
+cd D:\U-MV
+tools\windows\copy_archive.cmd "D:\Vegetation\3_Mapping Acacia tortilis Trees\A.tortilis_Data_Model" check
+```
+
+This copies nothing, prints the same tile counts and the same two
+`DATA_DIR=` / `WEIGHTS_DIR=` lines for step 6. The folder name must not
+contain the character `&`; rename it in File Explorer if it does.
+
+*If red text says* `Source not found`, open File Explorer → This PC and make
+sure `Z:` opens; make sure PowerShell was not started as administrator; then
+repeat the command. The command can be repeated at any time; it copies only
+what is missing. *If the share has another drive letter* (for example `Y:`),
+use:
 
 ```powershell
 $src = "Y:\Final Geodatabase\Vegetation_Geodatabase\3_Mapping Acacia tortilis Trees"
@@ -257,11 +271,12 @@ HF_HUB_OFFLINE=0
 ```
 
 These paths are correct if step 3 copied to `D:\A.tortilis_Data_Model`.
-*If the archive is elsewhere* (for example on `C:`), write the file with the
-two lines printed at the end of step 3; for `C:` that is exactly:
+*If the archive is elsewhere*, write the file with the two lines that step 3
+printed. Set `$d` to the folder used in step 3 (forward slashes, no trailing
+slash) and paste:
 
 ```powershell
-$d = "C:/A.tortilis_Data_Model"
+$d = "D:/Vegetation/3_Mapping Acacia tortilis Trees/A.tortilis_Data_Model"
 $l1 = 'DATA_DIR="' + $d + '/Data used to build the model"'
 $l2 = 'WEIGHTS_DIR="' + $d + '/A.tortilis Models/Pretrained weights"'
 Set-Content docker\.env -Encoding ASCII -Value $l1, $l2, 'HF_HUB_OFFLINE=0'
@@ -463,6 +478,7 @@ train_dataloader.batch_size=1` (12 GB GPU; the published runs used batch 2 on
 | `Clone succeeded, but checkout failed` or `This repository is over its data quota` | Git downloaded the weight files | Paste `Remove-Item -Recurse -Force D:\U-MV`, then repeat step 2 from its first line |
 | `BUILD FAILED` with `cannot allocate memory` above it | Docker has too little memory | Repeat step 4 with `memory=48GB` instead of `40GB`, then repeat step 7 |
 | `BUILD FAILED` (anything else) | A download was interrupted or a package failed | Repeat step 7 once; if it fails again, send the whole window content to the project lead |
+| `The argument 'D:\copy_archive.ps1' to the -File parameter does not exist` | The copy helper of an older version had a fault | Paste `cd D:\U-MV`, then `git pull`, then repeat step 3 |
 | `docker\.env is missing` | Step 6 was skipped | Do step 6, then repeat the command |
 | `ERROR: the checkpoint is U-MV-... but the config is U-MV-...` | Config and checkpoint of different models | Use the config file named in the message |
 | `torch.OutOfMemoryError: CUDA out of memory` or `RuntimeError: CUDA out of memory` | The GPU memory is used by something else | Close ArcGIS, QGIS and browsers; at the `#` prompt run `nvidia-smi` (Memory-Usage should be near 0 MiB); repeat the command. For step 13 add `--batch-size 2` |
