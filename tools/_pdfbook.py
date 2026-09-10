@@ -54,7 +54,7 @@ S = {
                          spaceBefore=12, spaceAfter=5),
     'h3': ParagraphStyle('h3', fontName='Sans-Bold', fontSize=11, leading=14, textColor=GREY,
                          spaceBefore=8, spaceAfter=3),
-    'code': ParagraphStyle('code', fontName='Mono', fontSize=8.2, leading=10.4, textColor=INK,
+    'code': ParagraphStyle('code', fontName='Mono', fontSize=9, leading=11.6, textColor=INK,
                            backColor=CODEBG, borderPadding=(5, 6, 5, 6), leftIndent=0,
                            spaceBefore=4, spaceAfter=8),
     'cell': ParagraphStyle('cell', fontName='Serif', fontSize=8.6, leading=10.6, textColor=INK),
@@ -109,9 +109,11 @@ def code_block(lines):
     esc = [html.escape(ln, quote=False).replace(' ', '&nbsp;') or '&nbsp;' for ln in lines]
     longest = max((len(ln) for ln in lines), default=0)
     style = S['code']
-    if longest > 88:  # shrink so that wide listings do not wrap mid-word (approx. 0.6 em per char)
-        fs = max(6.8, min(8.2, (AVAIL_W - 24) / (longest * 0.615)))
+    fs = max(6.8, min(style.fontSize, (AVAIL_W - 24) / (longest * 0.615)))  # shrink wide listings (~0.6 em/char)
+    if fs < style.fontSize:
         style = ParagraphStyle('code_small', parent=S['code'], fontSize=fs, leading=fs * 1.27)
+        if longest * fs * 0.615 > AVAIL_W - 24:
+            print(f'WARNING: code line of {longest} chars will wrap: {lines[[len(l) for l in lines].index(longest)][:70]}...')
     return Paragraph('<br/>'.join(esc), style)
 
 
@@ -144,10 +146,10 @@ def make_table(rows):
 
 class Numbering:
     def __init__(self):
-        self.ch = 0; self.sec = 0; self.sub = 0; self.label = ''
+        self.ch = 0; self.sec = 0; self.sub = 0; self.label = ''; self.sections = True
 
-    def chapter(self, label):
-        self.label = label; self.sec = 0; self.sub = 0
+    def chapter(self, label, sections=True):
+        self.label = label; self.sec = 0; self.sub = 0; self.sections = sections
 
     def section(self):
         self.sec += 1; self.sub = 0; return f'{self.label}.{self.sec}'
@@ -167,13 +169,13 @@ def heading(level, text):
         p = Paragraph(f'{pre}{inline(text)}', S['h1']); p._toc = (0, f'{NUM.label}  {text}'.strip())
         return [p]
     if level == 2:
-        if NUM.label == '':  # unnumbered mode (runbooks): keep the heading text as written
+        if NUM.label == '' or not NUM.sections:  # unnumbered sections: keep the heading text as written
             p = Paragraph(inline(text), S['h2']); p._toc = (1, text)
             return [p]
         n = NUM.section()
         p = Paragraph(f'{n}&nbsp;&nbsp;{inline(text)}', S['h2']); p._toc = (1, f'{n}  {text}')
         return [p]
-    if NUM.label == '':
+    if NUM.label == '' or not NUM.sections:
         return [Paragraph(inline(text), S['h3'])]
     n = NUM.subsection()
     return [Paragraph(f'{n}&nbsp;&nbsp;{inline(text)}', S['h3'])]
@@ -215,7 +217,7 @@ def md_to_flowables(md: str, skip_h1=False):
             j = i + 1; block = []
             while j < len(lines) and not lines[j].startswith('```'):
                 block.append(lines[j]); j += 1
-            out.append(code_block(block)); i = j + 1; continue
+            out.append(code_block(block)); out.append(Spacer(1, 2)); i = j + 1; continue
         if ln.startswith('|'):
             flush_para(); flush_lists(); table.append(ln); i += 1; continue
         else:
@@ -323,8 +325,8 @@ def toc_block():
     return [Paragraph('Contents', S['h1']), toc]
 
 
-def chapter(label, title, md, intro=None, skip_h1=True):
-    NUM.chapter(label)
+def chapter(label, title, md, intro=None, skip_h1=True, sections=True):
+    NUM.chapter(label, sections)
     fl = [PageBreak()] + heading(1, title)
     if intro:
         fl.append(Paragraph(inline(intro), S['body']))

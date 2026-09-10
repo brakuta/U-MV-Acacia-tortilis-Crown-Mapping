@@ -6,3 +6,9 @@ data
 *.pth
 Assets/*.png
 docs/reference/environment.frozen.yml
+Data*/
+*.tif
+*.tiff
+*.gpkg
+docs/*.pdf
+mmseg-geospatial-tutorial

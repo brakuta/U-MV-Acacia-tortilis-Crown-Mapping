@@ -28,8 +28,13 @@ def check_split(root: Path, split: str, suffix: str, sample: int, seed: int = 0)
     if not img_dir.is_dir() or not ann_dir.is_dir():
         print(f'[{split}] MISSING: {img_dir if not img_dir.is_dir() else ann_dir}')
         return False
-    imgs = {p.name: p for p in img_dir.iterdir() if p.suffix.lower() == suffix and p.is_file()}
-    anns = {p.name: p for p in ann_dir.iterdir() if p.suffix.lower() == suffix and p.is_file()}
+    imgs = {p.name: p for p in img_dir.iterdir() if p.suffix == suffix and p.is_file()}
+    anns = {p.name: p for p in ann_dir.iterdir() if p.suffix == suffix and p.is_file()}
+    odd = [p.name for p in list(img_dir.iterdir()) + list(ann_dir.iterdir())
+           if p.is_file() and p.suffix != suffix and p.suffix.lower() == suffix]
+    if odd:
+        print(f'   !! {len(odd)} files have the suffix in another case (e.g. {odd[:2]}); the loader only '
+              f'reads "{suffix}" exactly: rename them')
     side = [p for d in (img_dir, ann_dir) for p in d.iterdir() if p.name.lower().endswith(SIDECAR_SUFFIXES)]
     only_img, only_ann = sorted(set(imgs) - set(anns)), sorted(set(anns) - set(imgs))
     pairs = sorted(set(imgs) & set(anns))
@@ -85,7 +90,7 @@ def main():
     p.add_argument('--sample', type=int, default=100, help='pairs inspected per split')
     a = p.parse_args()
     root = Path(a.data_root)
-    results = [check_split(root, s, a.suffix.lower(), a.sample) for s in a.splits]
+    results = [check_split(root, s, a.suffix, a.sample) for s in a.splits]
     print('RESULT:', 'OK' if all(results) else 'PROBLEMS FOUND (see above)')
     raise SystemExit(0 if all(results) else 1)
 

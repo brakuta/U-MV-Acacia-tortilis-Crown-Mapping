@@ -68,11 +68,38 @@ the location of the hand-over folder.
   `docs/reference/Dockerfile.original`; it uses the same base image and MMCV
   build route as `docker/Dockerfile`.
 
+## Fixes after the first installation attempt (September 2026)
+
+A review of the hand-over material against the receiving workstation
+(Windows 11, Docker Desktop, 64 GB RAM, 12 GB GPU) led to the following
+corrections:
+
+* `umv` registers an mmengine checkpoint loader that passes
+  `weights_only=False`; under PyTorch 2.6 the stock loader rejects the
+  `message_hub` objects in the checkpoints (`tools/test.py`, `init_model`).
+* `tools/test.py` builds the backbone with `pretrained=False`, refuses a
+  config/checkpoint variant mismatch and fails on missing parameters instead
+  of evaluating a partly random network.
+* `test_dataloader`/`val_dataloader` batch size 1 (fits 12 GB, avoids the
+  same-size-in-batch assertion); geospatial `--batch-size` default 4.
+* Inference pipeline: the scratch directory is never deleted itself (only a
+  private sub-folder), the probability raster is always GeoTIFF, `.vrt` inputs
+  are rejected when staging; vectorisation handles inputs without CRS and
+  computes areas in metres for geographic CRSs.
+* Docker: mmcv operators compiled for CPU by default (GPU-independent image,
+  minutes instead of tens of minutes), mamba-ssm from its prebuilt wheel,
+  `setuptools<82` pin, correct compose fallbacks, `TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD`.
+* Windows helpers: `docker\umv.cmd` checks that Docker Desktop is running,
+  reports the GPU architecture, and builds without arguments;
+  `tools\windows\copy_archive.cmd` copies the archive and checks it; the
+  procedure uses `GIT_LFS_SKIP_SMUDGE=1` for `git clone`, writes `.wslconfig`
+  from PowerShell (40 GB) and is written for a first-time user.
+
 ## Not validated here (requires a GPU host)
 
 * The Docker image build (MMCV and mamba-ssm compilation) and the Hugging Face
   backbone instantiation; the Hub was unreachable from the sandbox in which
-  this revision was prepared. Run `docs/08_handover_checklist.md` steps 5–10 on
+  this revision was prepared. Run `docs/08_handover_checklist.md` steps 7–12 on
   the workstation and report any deviation.
 * Numerical equivalence of the released checkpoints with the paper's metrics.
 

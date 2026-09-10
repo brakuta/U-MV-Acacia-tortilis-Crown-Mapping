@@ -6,7 +6,7 @@ without LFS yields 134-byte pointer files, not weights.  Fetch the binaries with
 ```bash
 git lfs install
 git lfs pull                       # all three (~815 MB)
-git lfs pull --include="Pretrained_Weights/U-MV-small_latest.pth"   # one variant
+git lfs pull --include="Pretrained_Weights/U-MV-small_latest.pth"  # one variant
 ```
 
 | Variant     | File                     | Size   | SHA-256 (LFS oid)                                                   |
@@ -47,5 +47,6 @@ Passing a work-directory folder to any tool selects its `best_mIoU_iter_*.pth`:
 
 ```bash
 python tools/inspect_checkpoint.py "/weights/mambavision-s_generic-unet_acacia-88"
-python tools/test.py configs/mambavision/U-MV-small.py "/weights/mambavision-s_generic-unet_acacia-88" --test-split test2
+python tools/test.py configs/mambavision/U-MV-small.py \
+    "/weights/mambavision-s_generic-unet_acacia-88" --test-split test2
 ```

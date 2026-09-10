@@ -76,7 +76,12 @@ def main():
         model = MODELS.build(cfg.model).to(device).eval()
         if a.checkpoint:
             from mmengine.runner import load_checkpoint
-            load_checkpoint(model, resolve_checkpoint(a.checkpoint), map_location='cpu')
+            from umv.checkpoint import is_lfs_pointer
+            ckpt_path = resolve_checkpoint(a.checkpoint)
+            if is_lfs_pointer(ckpt_path):
+                raise SystemExit(f'{ckpt_path} is a Git LFS pointer, not a checkpoint: run "git lfs pull" '
+                                 'or use the work directories of the project archive (/weights)')
+            load_checkpoint(model, ckpt_path, map_location='cpu')
         n = sum(p.numel() for p in model.parameters()) / 1e6
         print(f'U-MV-{a.variant}: {n:.2f} M parameters, built in {time.time() - t0:.1f} s on {device}')
         x = torch.randn(1, 3, a.size, a.size, device=device)

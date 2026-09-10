@@ -66,8 +66,9 @@ train_dataloader = dict(
         data_prefix=dict(img_path='img_dir/train', seg_map_path='ann_dir/train'),
         pipeline=train_pipeline))
 
+# batch_size 1 for evaluation: fits a 12 GB GPU and does not change the metrics
 val_dataloader = dict(
-    batch_size=2,
+    batch_size=1,
     num_workers=4,
     persistent_workers=True,
     sampler=dict(type='DefaultSampler', shuffle=False),
@@ -81,7 +82,7 @@ val_dataloader = dict(
 # In-distribution test split. For the out-of-distribution split use
 #   python tools/test.py <config> <ckpt> --test-split Generalizability
 test_dataloader = dict(
-    batch_size=4,
+    batch_size=1,
     num_workers=4,
     persistent_workers=True,
     sampler=dict(type='DefaultSampler', shuffle=False),

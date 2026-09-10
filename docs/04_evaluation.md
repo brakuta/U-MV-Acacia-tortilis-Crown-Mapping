@@ -17,7 +17,8 @@ python tools/test.py configs/mambavision/U-MV-small.py "$CKPT" --test-split Gene
 python tools/test.py configs/mambavision/U-MV-small.py work_dirs/U-MV-small --test-split test2 # own run
 # released checkpoints (identical to the best_mIoU files; after git lfs pull)
 for v in tiny small base; do
-  python tools/test.py configs/mambavision/U-MV-$v.py Pretrained_Weights/U-MV-${v}_latest.pth --test-split test2
+  python tools/test.py configs/mambavision/U-MV-$v.py \
+      Pretrained_Weights/U-MV-${v}_latest.pth --test-split test2
 done
 ```
 

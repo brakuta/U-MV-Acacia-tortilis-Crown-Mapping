@@ -50,6 +50,23 @@ Outputs in the work directory: `<timestamp>/<timestamp>.log`,
 
 ## 3.3 Expected resources (paper, TITAN RTX 24 GB, batch 2)
 
+On a 12 GB GPU the published setting (batch 2, 1024 × 1024 crops, FP32) does
+not fit. Two configurations that keep the crop size and fit 12 GB are
+
+```bash
+python tools/train.py configs/mambavision/U-MV-small.py --amp \
+    --cfg-options train_dataloader.batch_size=1 train_dataloader.num_workers=4
+python tools/train.py configs/mambavision/U-MV-small.py --amp \
+    --cfg-options train_dataloader.dataset.pipeline.3.crop_size="(512,512)" \
+                  model.data_preprocessor.size="(512,512)"
+```
+
+(batch 1 halves the samples seen per schedule; double `max_iters` to compensate.
+U-MV-base does not train reliably on 12 GB.) Evaluation and inference of all
+three variants fit 12 GB unchanged (`test_dataloader.batch_size=1` is the
+default; the geospatial tool uses `--batch-size 4` in FP16).
+
+
 | Variant | Parameters | FLOPs (1024²) | Training time (100k it.) | Validation mIoU |
 |---|---|---|---|---|
 | U-MV-t | 35.41 M | 0.144 T | 9.33 h | 87.91 % |

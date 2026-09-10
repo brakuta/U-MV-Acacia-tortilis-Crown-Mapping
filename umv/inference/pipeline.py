@@ -141,8 +141,14 @@ def segment_raster(model, cfg, input_path: str, output_path: str,
     input_path, output_path = Path(input_path), Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    work = Path(scratch_dir) if scratch_dir else output_path.parent / f'.{output_path.stem}_work'
+    # Always work in a private sub-directory so that clean-up never removes a user folder
+    # (e.g. --scratch-dir /data would otherwise be deleted at the end).
+    work_root = Path(scratch_dir) if scratch_dir else output_path.parent
+    work = work_root / f'.{output_path.stem}_work'
     work.mkdir(parents=True, exist_ok=True)
+    if scratch_dir and input_path.suffix.lower() == '.vrt':
+        raise SystemExit('A .vrt mosaic cannot be staged into --scratch-dir (its source files would be '
+                         'missing there); convert it to a GeoTIFF/COG with gdal_translate or omit --scratch-dir')
 
     # 1) optional staging copy
     if scratch_dir:
@@ -202,7 +208,7 @@ def segment_raster(model, cfg, input_path: str, output_path: str,
     # 4) probability raster
     prob_path = Path(prob_output_path) if prob_output_path else (
         output_path.with_name(output_path.stem + '_prob.tif') if s.save_prob else work / 'prob.tif')
-    prob_meta.update(count=1, dtype=s.prob_dtype, tiled=True, blockxsize=512, blockysize=512,
+    prob_meta.update(driver='GTiff', count=1, dtype=s.prob_dtype, tiled=True, blockxsize=512, blockysize=512,
                      compress='deflate', predictor=2 if s.prob_dtype == 'uint8' else 3,
                      BIGTIFF='IF_SAFER', nodata=None)
     scale = 255.0 if s.prob_dtype == 'uint8' else 1.0
