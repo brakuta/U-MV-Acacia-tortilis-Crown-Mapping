@@ -50,13 +50,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # GDAL Python bindings are not reliably pip-installable; conda-forge provides a
 # consistent GDAL/PROJ/GEOS/rasterio/geopandas set (versions as in the frozen env).
 RUN conda install -y --override-channels -c conda-forge \
-        "python=3.11" "gdal=3.10" "rasterio=1.4" "geopandas-base=1.0" "shapely=2.1" \
+        "python=3.11" "gdal=3.10" "rasterio=1.4" "geopandas=1.0" "shapely=2.1" \
         "pyproj=3.7" "pyogrio" "numpy=2.2" \
     && conda clean -afy
 
 # --- OpenMMLab: mmengine (pure python) + mmcv (compiled from source) --------
 # setuptools < 82 keeps pkg_resources, which mmcv 2.1.0's setup.py imports.
-RUN pip install "setuptools>=77,<82" wheel "numpy>=2.2,<2.3" opencv-python==4.11.0.86 mmengine==0.10.7 && \
+RUN pip install "setuptools<82" wheel "numpy>=2.2,<2.3" opencv-python==4.11.0.86 mmengine==0.10.7 && \
     pip install --no-build-isolation -v mmcv==2.1.0 && \
     python -c "import mmcv, mmcv.ops; print('mmcv', mmcv.__version__, 'ops OK')"
 

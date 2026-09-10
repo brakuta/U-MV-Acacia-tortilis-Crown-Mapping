@@ -17,7 +17,8 @@ Safe to run again: robocopy skips files that are already present.
 param(
     [Parameter(Mandatory = $true)][string]$Destination,
     [string]$Source = "Z:\Final Geodatabase\Vegetation_Geodatabase\3_Mapping Acacia tortilis Trees\A.tortilis_Data & Model",
-    [switch]$CheckOnly
+    [switch]$CheckOnly,
+    [switch]$NoEnv
 )
 
 $ErrorActionPreference = 'Stop'
@@ -59,12 +60,38 @@ foreach ($s in 'train', 'val', 'test2', 'Generalizability') {
 
 Write-Host ""
 Write-Host "Best checkpoints found:"
-Get-ChildItem -LiteralPath "$Destination\$wts" -Recurse -Filter best_mIoU_iter_*.pth -ErrorAction SilentlyContinue | ForEach-Object { "  " + $_.FullName }
+$found = @(Get-ChildItem -LiteralPath "$Destination\$wts" -Recurse -Filter best_mIoU_iter_*.pth -ErrorAction SilentlyContinue)
+if ($found.Count -eq 0) {
+    $ok = $false
+    Write-Host "  none: '$Destination\$wts' is missing or empty   CHECK"
+}
+else {
+    $found | ForEach-Object { "  " + $_.FullName }
+    if ($found.Count -lt 3) { Write-Host "  (three are expected: tiny, small, base)" }
+}
 
 $d = $Destination.TrimEnd('\') -replace '\\', '/'
+$dataLine = 'DATA_DIR="' + $d + '/' + ($data -replace '\\', '/') + '"'
+$wtsLine = 'WEIGHTS_DIR="' + $d + '/' + ($wts -replace '\\', '/') + '"'
+
 Write-Host ""
-Write-Host "Lines for docker\.env (already correct in docker\.env.windows.example if Destination is D:\A.tortilis_Data_Model):"
-Write-Host ("DATA_DIR=""{0}/{1}""" -f $d, $data)
-Write-Host ("WEIGHTS_DIR=""{0}/{1}""" -f $d, ($wts -replace '\\', '/'))
+Write-Host "Lines for docker\.env:"
+Write-Host "  $dataLine"
+Write-Host "  $wtsLine"
+
+if (-not $NoEnv) {
+    $dockerDir = Join-Path $PSScriptRoot '..\..\docker'
+    if (Test-Path -LiteralPath $dockerDir) {
+        $envPath = Join-Path (Resolve-Path -LiteralPath $dockerDir).Path '.env'
+        Set-Content -LiteralPath $envPath -Encoding ASCII -Value $dataLine, $wtsLine, 'HF_HUB_OFFLINE=0'
+        Write-Host ""
+        Write-Host "Written: $envPath   (step 6 only checks this file)"
+    }
+    else {
+        Write-Host ""
+        Write-Host "docker\.env was not written (this script is not inside the code folder); enter the two lines by hand in step 6."
+    }
+}
+
 Write-Host ""
-if ($ok) { Write-Host "RESULT: OK" } else { Write-Host "RESULT: tile counts differ from the archive; run the script again or report it." }
+if ($ok) { Write-Host "RESULT: OK" } else { Write-Host "RESULT: something is marked CHECK above; run the command again, and report it if it stays." }

@@ -12,7 +12,7 @@ import datetime
 from _pdfbook import (NUM, ROOT, S, Doc, NextPageTemplate, PageBreak, Paragraph, Spacer, chapter, cm,  # noqa: F401
                       heading, image, md_to_flowables, read, toc_block)
 
-VERSION = '1.4'
+VERSION = '1.5'
 DATE = datetime.date(2026, 9, 10).strftime('%d %B %Y')
 OUT = ROOT / 'docs' / 'U-MV_Technical_Handover_Guide.pdf'
 

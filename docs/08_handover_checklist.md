@@ -19,7 +19,7 @@ and are not needed to complete this one.
 | 3 | Copy the archive from `Z:` to the local disk | PowerShell | 10–60 min |
 | 4 | Give Docker enough memory | PowerShell | 3 min |
 | 5 | Confirm Docker can use the GPU | PowerShell | 1 min |
-| 6 | Tell Docker where the data is | PowerShell | 1 min |
+| 6 | Check that Docker knows where the data is | PowerShell | 1 min |
 | 7 | Build the image | PowerShell | 15–40 min |
 | 8 | Start the container | PowerShell | 1 min |
 | 9 | Verify the software | container | 3 min |
@@ -116,11 +116,26 @@ docker version
 the command is "not recognized", close PowerShell and open a new window
 (programs installed while a window is open are not visible in it).
 
-**1c. Git.** In PowerShell paste `git --version`. If it prints `git version
+**1c. Update the Linux layer.** Docker runs the software inside a small Linux
+system built into Windows (WSL 2). It must be up to date, otherwise the
+graphics card stays invisible to it in step 5. Paste:
+
+```powershell
+wsl --update
+```
+
+**You should see** either `Installing: Windows Subsystem for Linux` followed
+by `The requested operation is successful`, or a message saying it is already
+up to date. Both are fine. *If it answers* `Invalid command line option` or
+that WSL is unknown, the Windows version is too old: press the Windows key,
+type `winver`, press Enter, and report the version shown (Windows 11, or
+Windows 10 version 21H2 or newer, is required).
+
+**1d. Git.** In PowerShell paste `git --version`. If it prints `git version
 2.x`, Git is installed. Otherwise install "Git for Windows" from git-scm.com
 with all default options, close PowerShell and open a new window.
 
-**1d. Disk space.** Paste:
+**1e. Disk space.** Paste:
 
 ```powershell
 Get-PSDrive C,D | ForEach-Object { "{0}: {1} GB free" -f $_.Name, [math]::Round($_.Free/1GB) }
@@ -135,88 +150,90 @@ and replace `D:\` by `C:\` in every command of steps 2, 3 and 6.
 
 > PowerShell · once · needs Internet · no GitHub account is needed
 
-The first line stops Git from downloading the large weight files stored on
-GitHub (they are not needed; the archive has them and the download can fail
-with a quota error).
+The second line removes a folder left by an earlier attempt (it stays silent
+if there is none). The third stops Git from
+downloading the large weight files stored on GitHub: they are not needed,
+the archive already has them, and the download can fail with a quota error.
 
 ```powershell
-$env:GIT_LFS_SKIP_SMUDGE = "1"
 cd D:\
+Remove-Item -Recurse -Force D:\U-MV -ErrorAction SilentlyContinue
+$env:GIT_LFS_SKIP_SMUDGE = "1"
 git clone https://github.com/brakuta/U-MV-Acacia-tortilis-Crown-Mapping.git U-MV
 cd D:\U-MV
 git log -1 --format=%cd
 ```
 
 **You should see** `Cloning into 'U-MV'...`, `Receiving objects: 100%`,
-`Resolving deltas: 100% ..., done.` and finally a date such as `Wed Sep 9
-14:02:11 2026 +0400`. The prompt is now `PS D:\U-MV>`.
+`Resolving deltas: 100% ..., done.` and finally a date. The prompt is now
+`PS D:\U-MV>`. The date must be recent; if it is older than the date printed
+on the front page of this guide, tell the project lead before continuing.
 
-*If a copy from an earlier attempt exists*, paste
-`Test-Path D:\U-MV\docker\Dockerfile`. `False`: continue with the block
-above. `True`: instead of the block, paste these three lines:
+## Step 3 — Put the dataset on the local disk
+
+> PowerShell, in `D:\U-MV` · once · 10 to 60 minutes if it must be copied
+
+Tiles must not be read from the shared drive (too slow), so the dataset and
+the trained models have to be on a disk of this computer. The command of this
+step also checks them and writes the settings file that step 6 needs.
+
+**3a. Is the archive already on this computer?** Paste:
 
 ```powershell
 cd D:\U-MV
-$env:GIT_LFS_SKIP_SMUDGE = "1"
-git pull
+$f = "Data used to build the model"
+Get-ChildItem D:\ -Directory -Recurse -Depth 4 -Filter $f -EA 0 | ForEach-Object { $_.Parent.FullName }
 ```
 
-**You should see** `Already up to date.` or a list of updated files.
+This takes up to a minute. It prints either nothing, or one line per copy
+found: the folder that holds the archive, for example
+`D:\Vegetation\3_Mapping Acacia tortilis Trees\A.tortilis_Data_Model`. If
+several lines appear, use the first one in 3b; if its check reports `CHECK`,
+try the next.
 
-## Step 3 — Copy the archive to the local disk
-
-> PowerShell · once · 10 to 60 minutes
-
-Tiles must not be read from the share (too slow), so the dataset and the
-trained models are copied to a local folder. One command does the copy,
-checks the tile counts and prints the two lines used in step 6. Nothing new
-appears for many minutes while it copies; that is normal.
+**3b. A line was printed: check that copy, copy nothing.** Paste the folder
+between the quotes, exactly as printed, and keep the word `check` at the end:
 
 ```powershell
-cd D:\U-MV
-tools\windows\copy_archive.cmd D:\A.tortilis_Data_Model
-```
-
-**You should see** two robocopy tables; in each, the `Files :` row must show
-`0` under `FAILED`. Then four lines such as
-`train              images= 4893  masks= 4893   ok` (also `val 2407`,
-`test2 3123`, `Generalizability 2162`, all marked `ok`), three
-`best_mIoU_iter_*.pth` paths under `Best checkpoints found:`, two lines
-starting with `DATA_DIR=` and `WEIGHTS_DIR=`, and `RESULT: OK`. Write down
-those two lines; step 6 uses them.
-
-**If the archive is already on the computer** (an earlier attempt, or someone
-copied it for you), do not copy it again. Check it instead, giving the folder
-that contains `Data used to build the model` (quotes are needed when the path
-contains spaces; add the word `check` at the end):
-
-```powershell
-cd D:\U-MV
 tools\windows\copy_archive.cmd "D:\Vegetation\3_Mapping Acacia tortilis Trees\A.tortilis_Data_Model" check
 ```
 
-This copies nothing, prints the same tile counts and the same two
-`DATA_DIR=` / `WEIGHTS_DIR=` lines for step 6. The folder name must not
-contain the character `&`; rename it in File Explorer if it does.
+**3c. Nothing was printed: copy the archive from the share.** This takes 10 to
+60 minutes, and nothing new appears on the screen while it copies:
 
-*If red text says* `Source not found`, open File Explorer → This PC and make
-sure `Z:` opens; make sure PowerShell was not started as administrator; then
-repeat the command. The command can be repeated at any time; it copies only
-what is missing. *If the share has another drive letter* (for example `Y:`),
-use:
+```powershell
+tools\windows\copy_archive.cmd D:\A.tortilis_Data_Model
+```
+
+**You should see**, after either command, four lines such as
+`train              images= 4893  masks= 4893   ok` (also `val 2407`,
+`test2 3123`, `Generalizability 2162`, each marked `ok`), three
+`best_mIoU_iter_*.pth` paths under `Best checkpoints found:`, a line
+`Written: D:\U-MV\docker\.env`, and the last line
+`RESULT: OK`. After 3c there are also two robocopy tables, in which the
+`Files :` row must show `0` under `FAILED`.
+
+*If red text says* `Source not found`, the shared drive is not connected: open
+File Explorer → This PC and check that `Z:` opens, make sure PowerShell was
+not started as administrator, then repeat. *If the folder name contains the
+character* `&`, rename it in File Explorer first (Docker cannot use it). *If
+the share has another drive letter* (for example `Y:`), use:
 
 ```powershell
 $src = "Y:\Final Geodatabase\Vegetation_Geodatabase\3_Mapping Acacia tortilis Trees"
 tools\windows\copy_archive.cmd D:\A.tortilis_Data_Model -Source "$src\A.tortilis_Data & Model"
 ```
 
-## Step 4 — Give Docker enough memory
+The command may be repeated at any time: it copies only what is missing.
+
+## Step 4 — Give Docker enough memory and restart it
 
 > PowerShell · once
 
-Docker runs inside a Linux layer of Windows (WSL2) whose memory limit is set
-in a small file. The first line writes that file (40 GB of the 64 GB), the
-second shows it:
+Docker runs inside the Linux layer of Windows, whose memory limit is set in a
+small file. Three actions, in this order.
+
+**4a. Write the file** (40 GB of the 64 GB; the second line shows the result):
 
 ```powershell
 $cfg = "$env:USERPROFILE\.wslconfig"
@@ -224,18 +241,29 @@ Set-Content $cfg -Encoding ASCII -Value '[wsl2]','memory=40GB','swap=8GB'
 Get-Content $cfg
 ```
 
-**You should see** the three lines `[wsl2]`, `memory=40GB`, `swap=8GB`. To
-apply them: right-click the whale icon in the taskbar corner → **Quit Docker
-Desktop**; wait until the icon disappears; paste `wsl --shutdown` (it prints
-nothing); start Docker Desktop again from the Start menu and wait until the
-whale is still. Then check:
+**You should see** the three lines `[wsl2]`, `memory=40GB`, `swap=8GB`.
+
+**4b. Restart the Linux layer** so that the file and the update of step 1c
+take effect. Right-click the whale icon in the taskbar corner (click the
+small `^` arrow if it is hidden) → **Quit Docker Desktop**, and wait until the
+icon has disappeared. Then paste:
+
+```powershell
+wsl --shutdown
+```
+
+It prints nothing. Now start Docker Desktop again from the Start menu and
+wait until the whale icon is still. This takes up to two minutes.
+
+**4c. Check the result.** Paste:
 
 ```powershell
 [math]::Round([long](docker info --format "{{.MemTotal}}") / 1GB)
 ```
 
-**You should see** `39` or `40`. Any smaller number means the file was not
-applied: repeat the quit, `wsl --shutdown`, start sequence.
+**You should see** `39` or `40`. A smaller number means Docker was not
+restarted after the file was written: repeat 4b. An error message means
+Docker Desktop is not running yet: wait for the whale icon and repeat 4c.
 
 ## Step 5 — Confirm Docker can use the GPU
 
@@ -263,28 +291,33 @@ Docker Desktop again, and repeat step 5. The GPU is not needed for step 7, so
 the image can be built while this is being solved; it is needed from step 8
 onward.
 
-## Step 6 — Tell Docker where the data is
+## Step 6 — Check that Docker knows where the data is
 
-> PowerShell · once
+> PowerShell, in `D:\U-MV` · once
+
+Step 3 wrote this file; here it is only read back.
 
 ```powershell
 cd D:\U-MV
-copy docker\.env.windows.example docker\.env
 type docker\.env
 ```
 
-**You should see** the file: a few comment lines starting with `#`, then
+**You should see** exactly three lines, the first two naming the folder found
+in step 3, for example
 
 ```
-DATA_DIR="D:/A.tortilis_Data_Model/Data used to build the model"
-WEIGHTS_DIR="D:/A.tortilis_Data_Model/A.tortilis Models/Pretrained weights"
+DATA_DIR=".../A.tortilis_Data_Model/Data used to build the model"
+WEIGHTS_DIR=".../A.tortilis_Data_Model/A.tortilis Models/Pretrained weights"
 HF_HUB_OFFLINE=0
 ```
 
-These paths are correct if step 3 copied to `D:\A.tortilis_Data_Model`.
-*If the archive is elsewhere*, write the file with the two lines that step 3
-printed. Set `$d` to the folder used in step 3 (forward slashes, no trailing
-slash) and paste:
+where `...` stands for the beginning of the folder found in step 3, written
+with forward slashes.
+
+The slashes lean forward and each line ends with a double quote; that is
+correct. *If the file is not found* or the folder is wrong, repeat step 3 with
+the right folder, or write the file by hand: set `$d` to that folder with
+forward slashes and no slash at the end, then paste all five lines together:
 
 ```powershell
 $d = "D:/Vegetation/3_Mapping Acacia tortilis Trees/A.tortilis_Data_Model"
@@ -293,8 +326,6 @@ $l2 = 'WEIGHTS_DIR="' + $d + '/A.tortilis Models/Pretrained weights"'
 Set-Content docker\.env -Encoding ASCII -Value $l1, $l2, 'HF_HUB_OFFLINE=0'
 type docker\.env
 ```
-
-Paths use forward slashes `/` and stay inside the double quotes.
 
 ## Step 7 — Build the image
 
@@ -492,7 +523,9 @@ train_dataloader.batch_size=1` (12 GB GPU; the published runs used batch 2 on
 | `BUILD FAILED` with `cannot allocate memory` above it | Docker has too little memory | Repeat step 4 with `memory=48GB` instead of `40GB`, then repeat step 7 |
 | `BUILD FAILED` (anything else) | A download was interrupted or a package failed | Repeat step 7 once; if it fails again, send the whole window content to the project lead |
 | `The argument 'D:\copy_archive.ps1' to the -File parameter does not exist` | The copy helper of an older version had a fault | Paste `cd D:\U-MV`, then `git pull`, then repeat step 3 |
-| `docker\.env is missing` | Step 6 was skipped | Do step 6, then repeat the command |
+| `destination path 'U-MV' already exists and is not an empty directory` | The old folder could not be deleted because a program still uses it | Close File Explorer, editors and any container window, then repeat step 2 |
+| `docker\.env is missing` | Step 3 did not write the file | Repeat step 3, or write the file by hand as shown at the end of step 6 |
+| `Get-ChildItem : Access to the path ... is denied` in step 3a | A protected folder was met while searching | Ignore it; if a folder line was printed, continue with 3b |
 | `ERROR: the checkpoint is U-MV-... but the config is U-MV-...` | Config and checkpoint of different models | Use the config file named in the message |
 | `torch.OutOfMemoryError: CUDA out of memory` or `RuntimeError: CUDA out of memory` | The GPU memory is used by something else | Close ArcGIS, QGIS and browsers; at the `#` prompt run `nvidia-smi` (Memory-Usage should be near 0 MiB); repeat the command. For step 13 add `--batch-size 2` |
 
