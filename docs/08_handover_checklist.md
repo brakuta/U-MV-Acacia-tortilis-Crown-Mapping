@@ -86,17 +86,23 @@ know before starting:
 
 > Windows · once per machine · needs Internet
 
-**1a. NVIDIA driver.** Open PowerShell (see step 0) and paste:
+**1a. Graphics card and driver.** Open PowerShell (see step 0) and paste both
+lines:
 
 ```powershell
+Get-CimInstance Win32_VideoController | ForEach-Object { $_.Name }
 nvidia-smi --query-gpu=name,memory.total,driver_version --format=csv
 ```
 
-**You should see** two lines, for example `name, memory.total [MiB],
-driver_version` and `NVIDIA GeForce RTX 3060, 12288 MiB, 560.94`. The driver
-number must be 520 or higher; if it is lower, or the command is "not
-recognized", install the driver for your GPU from nvidia.com, restart the
-computer and repeat.
+**You should see** an NVIDIA card in the first answer, and then two lines such
+as `name, memory.total [MiB], driver_version` and `NVIDIA GeForce RTX 3060,
+12288 MiB, 560.94`. The driver number must be 520 or higher.
+
+*If the first answer names no NVIDIA card* (only Intel or AMD), this computer
+cannot run the models: report it and stop here. *If an NVIDIA card is listed
+but the second command answers* `The term 'nvidia-smi' is not recognized`, the
+driver is missing: install it for that card from nvidia.com, restart Windows
+and repeat 1a.
 
 **1b. Docker Desktop.** Download "Docker Desktop for Windows" from docker.com
 and run the installer (answer **Yes**; keep "Use WSL 2 instead of Hyper-V"
@@ -116,20 +122,32 @@ docker version
 the command is "not recognized", close PowerShell and open a new window
 (programs installed while a window is open are not visible in it).
 
-**1c. Update the Linux layer.** Docker runs the software inside a small Linux
-system built into Windows (WSL 2). It must be up to date, otherwise the
-graphics card stays invisible to it in step 5. Paste:
+**1c. The Linux layer.** Docker runs the software inside a small Linux system
+built into Windows, called WSL 2. Without it the graphics card stays invisible
+to Docker, whatever else is done. Paste both lines:
 
 ```powershell
+wsl --version
 wsl --update
 ```
 
-**You should see** either `Installing: Windows Subsystem for Linux` followed
-by `The requested operation is successful`, or a message saying it is already
-up to date. Both are fine. *If it answers* `Invalid command line option` or
-that WSL is unknown, the Windows version is too old: press the Windows key,
-type `winver`, press Enter, and report the version shown (Windows 11, or
-Windows 10 version 21H2 or newer, is required).
+**You should see** a block naming a WSL version and a kernel version, then
+either `The requested operation is successful` or a message that it is already
+up to date.
+
+*If the answer is* `The term 'wsl' is not recognized`, WSL is not installed on
+this computer, and it must be installed before anything else works. It needs
+administrator rights and two restarts, so it is usually a task for the
+computing support team. In a PowerShell started with **Run as administrator**:
+
+```powershell
+dism.exe /online /enable-feature /featurename:Microsoft-Windows-Subsystem-Linux /all /norestart
+dism.exe /online /enable-feature /featurename:VirtualMachinePlatform /all /norestart
+```
+
+Restart Windows, then in a normal PowerShell paste `wsl --install`, restart
+Windows again, and repeat 1c. On a company machine these features may be
+blocked by policy; in that case the computing support team must enable them.
 
 **1d. Git.** In PowerShell paste `git --version`. If it prints `git version
 2.x`, Git is installed. Otherwise install "Git for Windows" from git-scm.com
@@ -145,6 +163,19 @@ Get-PSDrive C,D | ForEach-Object { "{0}: {1} GB free" -f $_.Name, [math]::Round(
 40 GB on `C:` (the image) and 40 GB on `D:` (the archive) are needed. If the answer contains
 `Cannot find drive` for `D`, the computer has no `D:` drive: use `C:` instead
 and replace `D:\` by `C:\` in every command of steps 2, 3 and 6.
+
+**1f. Docker must use the Linux layer.** Paste:
+
+```powershell
+docker info --format "{{.KernelVersion}}"
+```
+
+**You should see** a version ending in `-microsoft-standard-WSL2`. *If it ends
+in* `-linuxkit`, Docker Desktop is running on Hyper-V instead, where the
+graphics card is never visible: open Docker Desktop → Settings → General →
+tick **Use the WSL 2 based engine** → **Apply & restart**, wait until the whale
+icon is still, and repeat 1f. If that box cannot be ticked, WSL is missing:
+go back to 1c.
 
 ## Step 2 — Download the code
 
@@ -523,7 +554,9 @@ train_dataloader.batch_size=1` (12 GB GPU; the published runs used batch 2 on
 | First line of the message | Meaning | What to do |
 |---|---|---|
 | `git : The term 'git' is not recognized` or `docker : The term 'docker' is not recognized` | The program is not installed, or PowerShell was opened before it was installed | Install it (step 1); close PowerShell; open a new window; repeat the command |
-| `nvidia-smi : The term 'nvidia-smi' is not recognized` | No NVIDIA driver | Install the driver from nvidia.com, restart Windows, repeat step 1a |
+| `nvidia-smi : The term 'nvidia-smi' is not recognized` | No NVIDIA driver, or no NVIDIA card in this computer | Check the first answer of 1a; if an NVIDIA card is listed, install its driver from nvidia.com and restart Windows; if none is listed, report it and stop |
+| `wsl : The term 'wsl' is not recognized` | The Linux layer of Windows is not installed | Follow the administrator commands in step 1c; two restarts are needed |
+| `docker info` shows a kernel ending in `-linuxkit` | Docker Desktop runs on Hyper-V, where no graphics card is visible | Docker Desktop → Settings → General → tick **Use the WSL 2 based engine** → Apply & restart |
 | `The term 'tools\windows\copy_archive.cmd' is not recognized` or `'docker\umv.cmd' is not recognized` | The prompt is not in the code folder | Paste `cd D:\U-MV`, then repeat the command |
 | `python : The term 'python' is not recognized` | A container command was typed at the `PS` prompt | Do step 8 first, then repeat the command at the `#` prompt |
 | `Docker Desktop is not running` or `error during connect: ... dockerDesktopLinuxEngine` | Docker Desktop is stopped | Start Docker Desktop, wait until the whale is still, repeat the command |

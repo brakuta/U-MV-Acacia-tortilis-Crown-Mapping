@@ -35,9 +35,10 @@ Try-Run 'Windows' {
 }
 Write-Host "  needed: Windows 11, or Windows 10 build 19044 (21H2) or higher"
 
-Show-Section "2. NVIDIA driver on Windows"
+Show-Section "2. Graphics cards and NVIDIA driver"
+Try-Run 'video controllers' { Get-CimInstance Win32_VideoController | ForEach-Object { $_.Name } }
 Try-Run 'nvidia-smi' { nvidia-smi --query-gpu=name,memory.total,driver_version,compute_cap --format=csv }
-Write-Host "  needed: a line with the GPU and a driver version of 520 or higher"
+Write-Host "  needed: an NVIDIA card above, and a driver version of 520 or higher"
 
 Show-Section "3. Linux layer (WSL)"
 Try-Run 'wsl --version' { wsl.exe --version }
