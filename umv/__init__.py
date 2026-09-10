@@ -35,6 +35,11 @@ def _register_checkpoint_loader():
             return torch.load(filename, map_location=map_location)
 
 
-_register_checkpoint_loader()
+try:  # never let a registry change break "import umv"; the Docker image also sets
+    _register_checkpoint_loader()  # TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD=1 as a second safeguard
+except Exception as _e:  # noqa: BLE001
+    import warnings
+    warnings.warn(f'could not register the U-MV checkpoint loader ({_e}); if loading a checkpoint '
+                  'fails with "Weights only load failed", set TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD=1')
 
 __all__ = ['__version__', 'models', 'datasets']
