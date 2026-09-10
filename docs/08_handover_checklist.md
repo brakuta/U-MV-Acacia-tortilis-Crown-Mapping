@@ -279,17 +279,30 @@ and `Pull complete` lines are normal), a line with the GPU name, its memory,
 the driver version and a number such as `8.6`, followed by `OK: Docker can
 use the GPU shown above.`
 
-*If it fails*, find the message in the table at the end of the chapter; the
-usual repair is:
+*If it fails*, the usual repair is, in this order: paste `wsl --update`, quit
+Docker Desktop from the whale icon, paste `wsl --shutdown`, start Docker
+Desktop again from the Start menu, and repeat step 5.
+
+*If it still fails*, this command prints a report that names the cause. It
+only reads, it starts and changes nothing:
 
 ```powershell
-wsl --update
+docker\umv.cmd doctor
 ```
 
-then quit Docker Desktop from the whale icon, paste `wsl --shutdown`, start
-Docker Desktop again, and repeat step 5. The GPU is not needed for step 7, so
-the image can be built while this is being solved; it is needed from step 8
-onward.
+It prints six sections: the Windows version, the NVIDIA driver, the Linux
+layer, the Docker engine, the driver inside the Linux layer, and a last
+attempt in a container. Each section states what it needs. The two decisive
+lines are section 2, which must show the graphics card and a driver version
+of 520 or higher, and section 4, whose kernel must contain `WSL2`; a kernel
+containing `linuxkit` means Docker Desktop runs on Hyper-V, where no graphics
+card is visible, and the remedy is Docker Desktop → Settings → General →
+tick **Use the WSL 2 based engine** → Apply & restart. Send the whole report
+to the project lead.
+
+Do not stop the work meanwhile: **the graphics card is not needed for step 7**,
+so go on and build the image, which takes the longest of all steps. It is
+needed from step 8 onward.
 
 ## Step 6 — Check that Docker knows where the data is
 
@@ -516,7 +529,7 @@ train_dataloader.batch_size=1` (12 GB GPU; the published runs used batch 2 on
 | `Docker Desktop is not running` or `error during connect: ... dockerDesktopLinuxEngine` | Docker Desktop is stopped | Start Docker Desktop, wait until the whale is still, repeat the command |
 | `no matching manifest for windows/amd64` | Docker is in Windows-container mode | Right-click the whale icon → **Switch to Linux containers**, repeat the command |
 | `could not select device driver "" with capabilities: [[gpu]]` or `Failed to initialize NVML` | Docker cannot reach the GPU | Paste `wsl --update`, then `wsl --shutdown`; start Docker Desktop again; repeat `docker\umv.cmd gpu`. Still failing: Docker Desktop → Settings → Resources → WSL integration → tick the default distribution → Apply & restart |
-| `nvidia-container-cli: initialization error: load library failed: libnvidia-ml.so.1` (usually with `Auto-detected mode as 'legacy'`) | The Linux layer of Windows does not see the NVIDIA driver: its GPU support is outdated, or Docker Desktop is not using WSL 2 | 1. `wsl --update` 2. quit Docker Desktop from the whale icon 3. `wsl --shutdown` 4. start Docker Desktop 5. repeat step 5. If it persists: Docker Desktop → Settings → General → tick **Use the WSL 2 based engine** → Apply & restart. If it still persists, install the current NVIDIA driver for the GPU from nvidia.com (choose the Studio or Game Ready driver, not a WSL driver, and install it on Windows, never inside WSL), restart Windows, repeat step 5 |
+| `nvidia-container-cli: initialization error: load library failed: libnvidia-ml.so.1` (usually with `Auto-detected mode as 'legacy'`) | The Linux layer of Windows does not see the NVIDIA driver: its GPU support is outdated, or Docker Desktop is not using WSL 2. `docker\umv.cmd doctor` names the cause | 1. `wsl --update` 2. quit Docker Desktop from the whale icon 3. `wsl --shutdown` 4. start Docker Desktop 5. repeat step 5. If it persists: Docker Desktop → Settings → General → tick **Use the WSL 2 based engine** → Apply & restart. If it still persists, install the current NVIDIA driver for the GPU from nvidia.com (choose the Studio or Game Ready driver, not a WSL driver, and install it on Windows, never inside WSL), restart Windows, repeat step 5 |
 | `wsl --update`: `Invalid command line option` or WSL not installed | The Windows version predates the WSL GPU support | The workstation needs Windows 11, or Windows 10 version 21H2 or newer (Windows key → type `winver`); report the version shown |
 | `Source not found: Z:\...` | The share is not connected, or PowerShell runs as administrator | Open File Explorer → This PC and open `Z:`; open a normal PowerShell; repeat step 3 |
 | `Clone succeeded, but checkout failed` or `This repository is over its data quota` | Git downloaded the weight files | Paste `Remove-Item -Recurse -Force D:\U-MV`, then repeat step 2 from its first line |

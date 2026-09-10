@@ -5,6 +5,7 @@ rem   docker\umv.cmd gpu                check that Docker Desktop can use the GP
 rem   docker\umv.cmd build              build the image (works for every supported NVIDIA GPU)
 rem   docker\umv.cmd build 8.6 4        optional: compile mmcv GPU kernels for one architecture, 4 jobs
 rem   docker\umv.cmd shell              start an interactive container (type exit to leave)
+rem   docker\umv.cmd doctor             print a GPU report when "gpu" fails (changes nothing)
 rem
 rem The docker compose commands behind these are listed in docs/01_installation.md.
 setlocal
@@ -12,6 +13,7 @@ set "DIR=%~dp0"
 if /i "%~1"=="gpu" goto gpu
 if /i "%~1"=="build" goto build
 if /i "%~1"=="shell" goto shell
+if /i "%~1"=="doctor" goto doctor
 goto usage
 
 :gpu
@@ -23,6 +25,7 @@ if errorlevel 1 (
   echo   libnvidia-ml.so.1 or "legacy" in the message above: run  wsl --update , then quit
   echo   Docker Desktop, run  wsl --shutdown , start Docker Desktop and try again.
   echo   Other messages: see the "If you see this message" table in the guide.
+  echo   Still failing: run  docker\umv.cmd doctor  and send the report.
   echo   The image can be built ^(docker\umv.cmd build^) while this is being solved.
   exit /b 1
 )
@@ -60,6 +63,10 @@ call :needenv || exit /b 1
 docker compose --env-file "%DIR%.env" -f "%DIR%docker-compose.yml" run --rm umv
 exit /b %ERRORLEVEL%
 
+:doctor
+powershell -NoProfile -ExecutionPolicy Bypass -File "%DIR%..\tools\windows\gpu_check.ps1"
+exit /b %ERRORLEVEL%
+
 :needdocker
 docker info >nul 2>&1 && exit /b 0
 echo Docker Desktop is not running. Start it from the Start menu, wait until the whale icon
@@ -72,5 +79,5 @@ echo docker\.env is missing. Create it with:  copy docker\.env.windows.example d
 exit /b 1
 
 :usage
-echo Usage: docker\umv.cmd gpu ^| build [CUDA_ARCH [MAX_JOBS]] ^| shell
+echo Usage: docker\umv.cmd gpu ^| doctor ^| build [CUDA_ARCH [MAX_JOBS]] ^| shell
 exit /b 2
