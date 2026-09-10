@@ -19,7 +19,11 @@ call :needdocker || exit /b 1
 docker run --rm --gpus all ubuntu:22.04 nvidia-smi --query-gpu=name,memory.total,driver_version,compute_cap --format=csv
 if errorlevel 1 (
   echo.
-  echo Docker could not use the GPU. See the "If you see this message" table in the guide.
+  echo Docker could not use the GPU.
+  echo   libnvidia-ml.so.1 or "legacy" in the message above: run  wsl --update , then quit
+  echo   Docker Desktop, run  wsl --shutdown , start Docker Desktop and try again.
+  echo   Other messages: see the "If you see this message" table in the guide.
+  echo   The image can be built ^(docker\umv.cmd build^) while this is being solved.
   exit /b 1
 )
 echo.

@@ -7,12 +7,17 @@ in docker\.env.
 .EXAMPLE
 powershell -ExecutionPolicy Bypass -File tools\windows\copy_archive.ps1 -Destination D:\A.tortilis_Data_Model
 
+.EXAMPLE
+# check a copy that already exists (no copying, no Z: drive needed)
+powershell -ExecutionPolicy Bypass -File tools\windows\copy_archive.ps1 -Destination "D:\...\A.tortilis_Data_Model" -CheckOnly
+
 .NOTES
 Safe to run again: robocopy skips files that are already present.
 #>
 param(
     [Parameter(Mandatory = $true)][string]$Destination,
-    [string]$Source = "Z:\Final Geodatabase\Vegetation_Geodatabase\3_Mapping Acacia tortilis Trees\A.tortilis_Data & Model"
+    [string]$Source = "Z:\Final Geodatabase\Vegetation_Geodatabase\3_Mapping Acacia tortilis Trees\A.tortilis_Data & Model",
+    [switch]$CheckOnly
 )
 
 $ErrorActionPreference = 'Stop'
@@ -20,17 +25,26 @@ $data = "Data used to build the model"
 $wts = "A.tortilis Models\Pretrained weights"
 
 if ($Destination -match '&') { throw "The destination path must not contain '&' (Docker cannot mount it)." }
-if (-not (Test-Path -LiteralPath "$Source\$data")) {
-    throw "Source not found: $Source\$data`n  Is the Z: drive visible in File Explorer? Is this PowerShell window running as administrator? (an administrator window cannot see network drives: close it and open a normal one)"
+
+if ($CheckOnly) {
+    Write-Host "Checking the copy in $Destination (nothing is copied) ..."
+    if (-not (Test-Path -LiteralPath "$Destination\$data")) {
+        throw "Not found: $Destination\$data`n  Give the folder that contains '$data' and 'A.tortilis Models'."
+    }
 }
+else {
+    if (-not (Test-Path -LiteralPath "$Source\$data")) {
+        throw "Source not found: $Source\$data`n  Is the Z: drive visible in File Explorer? Is this PowerShell window running as administrator? (an administrator window cannot see network drives: close it and open a normal one)"
+    }
 
-Write-Host "1/2  Copying the dataset (about 32 GB; 10 to 60 minutes depending on the network) ..."
-robocopy "$Source\$data" "$Destination\$data" /E /MT:16 /R:2 /W:5 /XF *.aux.xml *.ovr /NP /NFL /NDL
-if ($LASTEXITCODE -ge 8) { throw "robocopy reported failures (exit code $LASTEXITCODE); run the script again." }
+    Write-Host "1/2  Copying the dataset (about 32 GB; 10 to 60 minutes depending on the network) ..."
+    robocopy "$Source\$data" "$Destination\$data" /E /MT:16 /R:2 /W:5 /XF *.aux.xml *.ovr /NP /NFL /NDL
+    if ($LASTEXITCODE -ge 8) { throw "robocopy reported failures (exit code $LASTEXITCODE); run the script again." }
 
-Write-Host "2/2  Copying the trained models (about 2.5 GB) ..."
-robocopy "$Source\$wts" "$Destination\$wts" /E /MT:16 /R:2 /W:5 /NP /NFL /NDL
-if ($LASTEXITCODE -ge 8) { throw "robocopy reported failures (exit code $LASTEXITCODE); run the script again." }
+    Write-Host "2/2  Copying the trained models (about 2.5 GB) ..."
+    robocopy "$Source\$wts" "$Destination\$wts" /E /MT:16 /R:2 /W:5 /NP /NFL /NDL
+    if ($LASTEXITCODE -ge 8) { throw "robocopy reported failures (exit code $LASTEXITCODE); run the script again." }
+}
 
 Write-Host ""
 Write-Host "Tile counts   (expected: train 4893, val 2407, test2 3123, Generalizability 2162)"
